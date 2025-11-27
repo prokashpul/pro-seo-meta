@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, RefreshCcw, Trash2, Type, ArrowRight, ArrowLeft, Eraser } from 'lucide-react';
+import { X, Plus, Minus, RefreshCcw, Trash2, Type, ArrowRight, ArrowLeft, Eraser, Replace } from 'lucide-react';
 
-export type BulkActionType = 'ADD' | 'REMOVE' | 'REPLACE_ALL' | 'CLEAR_ALL' | 'APPEND' | 'PREPEND';
+export type BulkActionType = 'ADD' | 'REMOVE' | 'REPLACE_ALL' | 'CLEAR_ALL' | 'APPEND' | 'PREPEND' | 'REPLACE_TEXT';
 export type BulkTargetField = 'keywords' | 'title';
 
 interface BulkKeywordModalProps {
@@ -15,12 +15,18 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
   const [field, setField] = useState<BulkTargetField>('keywords');
   const [action, setAction] = useState<BulkActionType>('ADD');
   const [inputValue, setInputValue] = useState('');
+  
+  // Specific state for Find & Replace
+  const [findValue, setFindValue] = useState('');
+  const [replaceValue, setReplaceValue] = useState('');
 
   if (!isOpen) return null;
 
   const handleFieldChange = (newField: BulkTargetField) => {
     setField(newField);
     setInputValue('');
+    setFindValue('');
+    setReplaceValue('');
     // Set default reasonable action for the field
     if (newField === 'keywords') setAction('ADD');
     else setAction('REPLACE_ALL');
@@ -44,8 +50,14 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
         }
     } else {
         // Title Actions
-        onApply(action, inputValue.trim(), field);
+        if (action === 'REPLACE_TEXT') {
+            onApply(action, { find: findValue, replace: replaceValue }, field);
+        } else {
+            onApply(action, inputValue.trim(), field);
+        }
         setInputValue('');
+        setFindValue('');
+        setReplaceValue('');
         onClose();
     }
   };
@@ -93,7 +105,7 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
 
           <div className="space-y-4 mb-6">
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg sm:flex">
+            <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg sm:flex sm:flex-wrap">
               {field === 'keywords' ? (
                 <>
                     <button
@@ -141,8 +153,19 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                         className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                         action === 'REPLACE_ALL' ? 'bg-emerald-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
+                        title="Set Exact Title"
                     >
                         <Type size={14} /> Set Exact
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAction('REPLACE_TEXT')}
+                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        action === 'REPLACE_TEXT' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        } flex-1`}
+                        title="Find and Replace"
+                    >
+                        <Replace size={14} /> Replace
                     </button>
                     <button
                         type="button"
@@ -150,6 +173,7 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                         className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                         action === 'APPEND' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
+                        title="Add to end"
                     >
                         <ArrowRight size={14} /> Append
                     </button>
@@ -159,6 +183,7 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                         className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                         action === 'PREPEND' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
+                        title="Add to start"
                     >
                         <ArrowLeft size={14} /> Prepend
                     </button>
@@ -168,6 +193,7 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                         className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                         action === 'REMOVE' ? 'bg-amber-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
+                        title="Remove specific text"
                     >
                         <Eraser size={14} /> Remove
                     </button>
@@ -182,6 +208,34 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                    Are you sure? This will remove all keywords from the selected images.
                  </p>
                </div>
+            ) : action === 'REPLACE_TEXT' && field === 'title' ? (
+                <div className="space-y-3 animate-in fade-in">
+                     <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
+                          Find Word/Phrase
+                        </label>
+                        <input
+                            value={findValue}
+                            onChange={(e) => setFindValue(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-slate-200 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
+                            placeholder="Word to find..."
+                        />
+                     </div>
+                     <div className="flex justify-center">
+                         <ArrowRight className="text-slate-400 rotate-90" size={16} />
+                     </div>
+                     <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
+                          Replace With
+                        </label>
+                        <input
+                            value={replaceValue}
+                            onChange={(e) => setReplaceValue(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-slate-200 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
+                            placeholder="New word..."
+                        />
+                     </div>
+                </div>
             ) : (
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">

@@ -8,7 +8,7 @@ import { BulkKeywordModal, BulkActionType, BulkTargetField } from './components/
 import { Login } from './components/Login';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { About } from './components/About';
-import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info } from 'lucide-react';
+import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home } from 'lucide-react';
 import JSZip from 'jszip';
 
 const MAX_PARALLEL_UPLOADS = 3;
@@ -389,22 +389,30 @@ function App() {
             }
           };
       } else if (field === 'title') {
-          const text = value as string;
           let newTitle = file.metadata.title;
           
           if (action === 'REPLACE_ALL') {
-              newTitle = text;
+              newTitle = value as string;
           } else if (action === 'APPEND') {
-              newTitle = `${newTitle} ${text}`.trim();
+              newTitle = `${newTitle} ${value}`.trim();
           } else if (action === 'PREPEND') {
-              newTitle = `${text} ${newTitle}`.trim();
+              newTitle = `${value} ${newTitle}`.trim();
           } else if (action === 'REMOVE') {
+              const text = value as string;
               // Case insensitive, global replacement logic for "Remove Text"
               if (text) {
-                  // Escape special characters in user input to use in RegExp
                   const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                   const regex = new RegExp(escapedText, 'gi');
                   newTitle = newTitle.replace(regex, '');
+                  // Clean up extra whitespace left behind
+                  newTitle = newTitle.replace(/\s+/g, ' ').trim();
+              }
+          } else if (action === 'REPLACE_TEXT') {
+              const { find, replace } = value as { find: string, replace: string };
+              if (find) {
+                  const escapedFind = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  const regex = new RegExp(escapedFind, 'gi');
+                  newTitle = newTitle.replace(regex, replace);
                   // Clean up extra whitespace left behind
                   newTitle = newTitle.replace(/\s+/g, ' ').trim();
               }
@@ -476,17 +484,37 @@ function App() {
           </div>
 
           <div className="flex items-center gap-4">
-             {/* Theme Toggle */}
+             
+             {/* Home Button (Visible when not on Home) */}
+             {view !== 'generator' && (
+                 <button
+                    onClick={() => setView('generator')}
+                    className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
+                      isDarkMode 
+                        ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
+                        : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
+                    }`}
+                    title="Back to Generator"
+                  >
+                    <Home size={14} />
+                    <span className="hidden lg:inline">Home</span>
+                  </button>
+             )}
+
+             {/* About Button (Header) */}
              <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className={`p-2 rounded-full transition-colors ${
-                  isDarkMode 
-                    ? 'bg-slate-800 text-yellow-400 hover:bg-slate-700' 
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-orange-500'
+                onClick={() => setView('about')}
+                className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
+                  view === 'about'
+                    ? 'bg-indigo-500 text-white border-indigo-500'
+                    : isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
+                      : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
                 }`}
-                title="Toggle Dark Mode"
+                title="About"
               >
-                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                <Info size={14} />
+                <span className="hidden lg:inline">About</span>
               </button>
 
             {/* Mode Switcher */}
@@ -522,22 +550,6 @@ function App() {
             {/* API Key & User Profile */}
             <div className="flex items-center gap-3">
                
-               {/* About Button (Header) */}
-               <button
-                  onClick={() => setView('about')}
-                  className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
-                    view === 'about'
-                      ? 'bg-indigo-500 text-white border-indigo-500'
-                      : isDarkMode 
-                        ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
-                        : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
-                  }`}
-                  title="About"
-                >
-                  <Info size={14} />
-                  <span className="hidden lg:inline">About</span>
-                </button>
-
                <button
                   onClick={() => setIsApiKeyModalOpen(true)}
                   className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
@@ -577,6 +589,19 @@ function App() {
                 </div>
             </div>
 
+            {/* Theme Toggle (Moved to end) */}
+             <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className={`p-2 rounded-full transition-colors ${
+                  isDarkMode 
+                    ? 'bg-slate-800 text-yellow-400 hover:bg-slate-700' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-orange-500'
+                }`}
+                title="Toggle Dark Mode"
+              >
+                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
           </div>
         </div>
       </header>
@@ -585,7 +610,7 @@ function App() {
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {view === 'about' ? (
-          <About />
+          <About onBack={() => setView('generator')} />
         ) : (
           <>
             {/* Intro / Stats */}

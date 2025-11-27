@@ -1,9 +1,22 @@
 import React from 'react';
-import { UploadCloud, Sparkles, Edit3, Download, Zap, Aperture, TrendingUp, ShieldCheck } from 'lucide-react';
+import { UploadCloud, Sparkles, Edit3, Download, Zap, Aperture, TrendingUp, ShieldCheck, ArrowLeft } from 'lucide-react';
 
-export const About: React.FC = () => {
+interface AboutProps {
+  onBack?: () => void;
+}
+
+export const About: React.FC<AboutProps> = ({ onBack }) => {
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+      {onBack && (
+        <button 
+          onClick={onBack}
+          className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-indigo-500 transition-colors font-medium"
+        >
+          <ArrowLeft size={16} /> Back to Home
+        </button>
+      )}
+
       <div className="text-center mb-12">
         <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500">
           About StockMeta AI
