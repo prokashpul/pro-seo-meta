@@ -8,7 +8,8 @@ import { BulkKeywordModal, BulkActionType, BulkTargetField } from './components/
 import { Login } from './components/Login';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { About } from './components/About';
-import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home } from 'lucide-react';
+import { PromptGenerator } from './components/PromptGenerator';
+import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon } from 'lucide-react';
 import JSZip from 'jszip';
 
 const MAX_PARALLEL_UPLOADS = 3;
@@ -20,14 +21,14 @@ function App() {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   
   const [files, setFiles] = useState<UploadedFile[]>([]);
-  const [modelMode, setModelMode] = useState<ModelMode>(ModelMode.QUALITY);
+  const [modelMode, setModelMode] = useState<ModelMode>(ModelMode.FAST);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [renameOnExport, setRenameOnExport] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(true);
   
-  const [view, setView] = useState<'generator' | 'about'>('generator');
+  const [view, setView] = useState<'generator' | 'prompts' | 'about'>('generator');
 
   // Theme Toggle Effect
   useEffect(() => {
@@ -501,6 +502,22 @@ function App() {
                   </button>
              )}
 
+             {/* Prompts Button (New) */}
+             <button
+                onClick={() => setView('prompts')}
+                className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
+                  view === 'prompts'
+                    ? 'bg-pink-600 text-white border-pink-600'
+                    : isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
+                      : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
+                }`}
+                title="Prompts Generate"
+              >
+                <ImageIcon size={14} />
+                <span className="hidden lg:inline">Prompts Generate</span>
+              </button>
+
              {/* About Button (Header) */}
              <button
                 onClick={() => setView('about')}
@@ -517,35 +534,39 @@ function App() {
                 <span className="hidden lg:inline">About</span>
               </button>
 
-            {/* Mode Switcher */}
-            <div className={`hidden sm:flex p-1 rounded-lg items-center border transition-colors ${
-              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
-            }`}>
-              <button
-                onClick={() => setModelMode(ModelMode.FAST)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  modelMode === ModelMode.FAST 
-                    ? 'bg-indigo-600 text-white shadow-lg' 
-                    : (isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900')
-                }`}
-              >
-                <Zap size={14} />
-                Fast Mode
-              </button>
-              <button
-                onClick={() => setModelMode(ModelMode.QUALITY)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  modelMode === ModelMode.QUALITY 
-                    ? 'bg-purple-600 text-white shadow-lg' 
-                    : (isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900')
-                }`}
-              >
-                <Aperture size={14} />
-                Pro Analysis
-              </button>
-            </div>
+            {/* Mode Switcher - Only on Generator view */}
+            {view === 'generator' && (
+              <div className={`hidden sm:flex p-1 rounded-lg items-center border transition-colors ${
+                isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
+              }`}>
+                <button
+                  onClick={() => setModelMode(ModelMode.FAST)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    modelMode === ModelMode.FAST 
+                      ? 'bg-indigo-600 text-white shadow-lg' 
+                      : (isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900')
+                  }`}
+                >
+                  <Zap size={14} />
+                  Fast Mode
+                </button>
+                <button
+                  onClick={() => setModelMode(ModelMode.QUALITY)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    modelMode === ModelMode.QUALITY 
+                      ? 'bg-purple-600 text-white shadow-lg' 
+                      : (isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900')
+                  }`}
+                >
+                  <Aperture size={14} />
+                  Pro Analysis
+                </button>
+              </div>
+            )}
 
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+            {view === 'generator' && (
+                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+            )}
 
             {/* API Key & User Profile */}
             <div className="flex items-center gap-3">
@@ -611,6 +632,8 @@ function App() {
         
         {view === 'about' ? (
           <About onBack={() => setView('generator')} />
+        ) : view === 'prompts' ? (
+          <PromptGenerator apiKey={apiKey} onBack={() => setView('generator')} />
         ) : (
           <>
             {/* Intro / Stats */}

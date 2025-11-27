@@ -190,3 +190,60 @@ export const getTrendingKeywords = async (baseKeywords: string[], apiKey?: strin
     return [];
   }
 };
+
+/**
+ * Generates a short, realistic image generation prompt from an image.
+ */
+export const generateImagePrompt = async (
+  base64Data: string,
+  mimeType: string,
+  apiKey?: string
+): Promise<string> => {
+  try {
+    const key = apiKey || process.env.API_KEY;
+    if (!key) throw new Error("API Key is missing.");
+
+    const ai = new GoogleGenAI({ apiKey: key });
+    // Start with Pro model for best visual understanding
+    const primaryModel = 'gemini-3-pro-preview';
+    const isPro = true;
+
+    const prompt = `
+      Analyze this image and write a short, realistic text prompt that could be used to generate this exact image using an AI image generator (like Midjourney or Stable Diffusion).
+      
+      Focus on:
+      1. Main subject and action
+      2. Lighting and atmosphere
+      3. Artistic style and composition
+      
+      Keep it under 75 words. Be direct and descriptive. Do not include intro text.
+    `;
+
+    // Use retry logic with fallback to Flash if Pro hits quota
+    const response = await generateWithRetry(ai, {
+      model: primaryModel,
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          },
+          {
+            text: prompt
+          }
+        ]
+      }
+    }, isPro);
+
+    return response.text || "Failed to generate prompt.";
+
+  } catch (error) {
+    console.error("Error generating prompt:", error);
+    // Rethrow logic handled by generateWithRetry or bubble up standard errors
+    const msg = (error as Error).message || '';
+    if (msg.includes("Invalid API Key")) throw new Error("Invalid API Key. Please update it.");
+    throw error;
+  }
+};
