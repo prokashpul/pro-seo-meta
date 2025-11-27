@@ -21,6 +21,7 @@ const MAX_PARALLEL_UPLOADS = 3;
 
 function App() {
   const [user, setUser] = useState<{name: string, email: string, avatar: string} | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [modelMode, setModelMode] = useState<ModelMode>(ModelMode.QUALITY);
@@ -39,34 +40,51 @@ function App() {
     }
   }, [isDarkMode]);
 
-  // Auto-Check API Key on Login
+  // Auto-Login: Check if API key is already present on mount
   useEffect(() => {
-    if (user && window.aistudio) {
-      const checkAndPromptKey = async () => {
-        try {
-          const hasKey = await window.aistudio.hasSelectedApiKey();
-          if (!hasKey) {
-             // Automatically open key selection if not set
-             await window.aistudio.openSelectKey();
-          }
-        } catch (e) {
-          console.error("Failed to check/prompt API key", e);
+    if (window.aistudio) {
+      window.aistudio.hasSelectedApiKey().then(hasKey => {
+        if (hasKey) {
+          // If key exists, we consider the user authenticated
+          setUser({
+            name: 'StockMeta User',
+            email: 'google-authenticated',
+            avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c'
+          });
         }
-      };
-      
-      // Small delay to ensure UI is ready
-      const t = setTimeout(checkAndPromptKey, 500);
-      return () => clearTimeout(t);
+      }).catch(e => console.error("Failed to check API key status", e));
     }
-  }, [user]);
+  }, []);
 
-  const handleLogin = () => {
-    // Simulate Google Login
-    setUser({
-      name: 'Demo User',
-      email: 'user@example.com',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' 
-    });
+  const handleLogin = async () => {
+    setIsLoggingIn(true);
+    try {
+      if (window.aistudio) {
+        // Forces the Google Auth / Key Selection flow
+        // The user must be logged into their Google Account to select a key
+        await window.aistudio.openSelectKey();
+        
+        // Per guidelines: Assume success after triggering openSelectKey
+        setUser({
+          name: 'StockMeta User',
+          email: 'google-authenticated',
+          avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c'
+        });
+      } else {
+        // Fallback for dev environment
+        setTimeout(() => {
+          setUser({
+            name: 'Demo User',
+            email: 'user@example.com',
+            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' 
+          });
+        }, 1000);
+      }
+    } catch (e) {
+      console.error("Login flow failed", e);
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   const handleLogout = () => {
@@ -371,6 +389,7 @@ function App() {
     return (
       <Login 
         onLogin={handleLogin} 
+        isLoggingIn={isLoggingIn}
         isDarkMode={isDarkMode} 
         toggleTheme={() => setIsDarkMode(!isDarkMode)} 
       />
