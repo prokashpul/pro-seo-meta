@@ -171,7 +171,8 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
   // Limits
   const TITLE_MIN = 55;
   const TITLE_MAX = 150;
-  const DESC_MAX = 200;
+  const DESC_MIN = 70; // Optimization rule
+  const DESC_MAX = 200; // Optimization rule
   const KEYWORD_MIN = 35;
   const KEYWORD_MAX = 49;
 
@@ -311,11 +312,11 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</label>
                  <div className="flex items-center gap-2">
                    <span className={`text-[10px] ${
-                       displayMetadata.description.length > DESC_MAX
+                       displayMetadata.description.length < DESC_MIN || displayMetadata.description.length > DESC_MAX
                        ? 'text-red-500 font-bold'
                        : 'text-emerald-500'
                    }`}>
-                       {displayMetadata.description.length} / {DESC_MAX} chars
+                       {displayMetadata.description.length} / {DESC_MAX} chars (Min {DESC_MIN})
                    </span>
                    <button onClick={() => copyToClipboard(displayMetadata.description, 'description')} className="text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
                      {copiedField === 'description' ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
@@ -328,7 +329,7 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                 onBlur={handleBlur}
                 rows={3}
                 className={`w-full p-2.5 text-sm text-slate-700 dark:text-slate-300 rounded-lg border focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none ${
-                    displayMetadata.description.length > DESC_MAX
+                    displayMetadata.description.length < DESC_MIN || displayMetadata.description.length > DESC_MAX
                     ? 'border-red-300 dark:border-red-800 focus:border-red-500 bg-red-50 dark:bg-red-900/10'
                     : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
                 }`}
@@ -480,4 +481,4 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
       </div>
     </div>
   );
-};
+}

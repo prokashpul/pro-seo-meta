@@ -11,7 +11,7 @@ const metadataSchema: Schema = {
     },
     description: {
       type: Type.STRING,
-      description: "A detailed description of the image content, mood, and technical aspects. Maximum 200 characters.",
+      description: "SEO-optimized description for Adobe Stock & Shutterstock. Natural language summary of subject, action, and context. Length: 70-200 characters.",
     },
     keywords: {
       type: Type.ARRAY,
@@ -109,9 +109,9 @@ export const generateImageMetadata = async (
       You are an expert stock photography contributor for Adobe Stock and Shutterstock.
       Analyze the uploaded image visually.
       
-      Generate metadata that maximizes SEO potential.
-      1. Title: Catchy, descriptive, and relevant. MUST be between 55 and 150 characters in length.
-      2. Description: Detailed, natural language. Provide a comprehensive description of the image. Maximum 200 characters.
+      Generate metadata that maximizes SEO potential following strict agency guidelines:
+      1. Title: Catchy, descriptive, and relevant. MUST be between 55 and 150 characters.
+      2. Description: Optimized for Adobe Stock & Shutterstock. Write a concise, natural sentence describing the subject, action, and key details. STRICTLY between 70 and 200 characters.
       3. Keywords: Provide 35-49 keywords. Include conceptual tags (e.g., "success", "freedom") and literal tags (e.g., "blue sky", "laptop").
       4. Category: Choose the single best standard category.
       

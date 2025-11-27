@@ -7,7 +7,8 @@ import { MetadataCard } from './components/MetadataCard';
 import { BulkKeywordModal, BulkActionType, BulkTargetField } from './components/BulkKeywordModal';
 import { Login } from './components/Login';
 import { ApiKeyModal } from './components/ApiKeyModal';
-import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut } from 'lucide-react';
+import { About } from './components/About';
+import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info } from 'lucide-react';
 import JSZip from 'jszip';
 
 const MAX_PARALLEL_UPLOADS = 3;
@@ -25,6 +26,8 @@ function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [renameOnExport, setRenameOnExport] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  
+  const [view, setView] = useState<'generator' | 'about'>('generator');
 
   // Theme Toggle Effect
   useEffect(() => {
@@ -455,8 +458,11 @@ function App() {
         isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white/70 border-slate-200'
       }`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-lg">
+          <div 
+            className="flex items-center gap-2 cursor-pointer group"
+            onClick={() => setView('generator')}
+          >
+            <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-lg group-hover:shadow-lg transition-all">
               <Layers className="text-white w-6 h-6" />
             </div>
             <div>
@@ -515,6 +521,23 @@ function App() {
 
             {/* API Key & User Profile */}
             <div className="flex items-center gap-3">
+               
+               {/* About Button (Header) */}
+               <button
+                  onClick={() => setView('about')}
+                  className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
+                    view === 'about'
+                      ? 'bg-indigo-500 text-white border-indigo-500'
+                      : isDarkMode 
+                        ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
+                        : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
+                  }`}
+                  title="About"
+                >
+                  <Info size={14} />
+                  <span className="hidden lg:inline">About</span>
+                </button>
+
                <button
                   onClick={() => setIsApiKeyModalOpen(true)}
                   className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
@@ -561,193 +584,199 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Intro / Stats */}
-        <div className="mb-8">
-          <h2 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-            Generate Metadata
-          </h2>
-          <p className={`max-w-2xl ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-            Upload your stock photography to automatically generate optimized titles, descriptions, and keywords. 
-            Supports paired Vectors (EPS/AI) if matched by filename.
-          </p>
-        </div>
+        {view === 'about' ? (
+          <About />
+        ) : (
+          <>
+            {/* Intro / Stats */}
+            <div className="mb-8">
+              <h2 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                Generate Metadata
+              </h2>
+              <p className={`max-w-2xl ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                Upload your stock photography to automatically generate optimized titles, descriptions, and keywords. 
+                Supports paired Vectors (EPS/AI) if matched by filename.
+              </p>
+            </div>
 
-        {/* Uploader */}
-        <div className="mb-10">
-          <FileUploader onFilesSelected={handleFilesSelected} />
-        </div>
+            {/* Uploader */}
+            <div className="mb-10">
+              <FileUploader onFilesSelected={handleFilesSelected} />
+            </div>
 
-        {/* Actions Bar */}
-        {files.length > 0 && (
-          <div className={`flex justify-between items-center mb-6 sticky top-20 z-40 backdrop-blur p-4 rounded-xl border shadow-xl transition-all ${
-            isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'
-          }`}>
-            <div className="flex items-center gap-3">
-               {selectedCount > 0 ? (
-                 <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2">
-                   <button 
+            {/* Actions Bar */}
+            {files.length > 0 && (
+              <div className={`flex justify-between items-center mb-6 sticky top-20 z-40 backdrop-blur p-4 rounded-xl border shadow-xl transition-all ${
+                isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'
+              }`}>
+                <div className="flex items-center gap-3">
+                  {selectedCount > 0 ? (
+                    <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2">
+                      <button 
+                          onClick={handleSelectAll}
+                          className="text-indigo-400 font-medium text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-indigo-500/10 transition-colors"
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedCount === files.length ? 'bg-indigo-500 border-indigo-500' : 'border-indigo-400'}`}>
+                            {selectedCount === files.length && <CheckSquare size={10} className="text-white" />}
+                        </div>
+                        {selectedCount} Selected
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className={`font-medium text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                        {files.length} Asset{files.length !== 1 ? 's' : ''}
+                      </span>
+                      <span className="w-px h-4 bg-slate-700"></span>
+                      <span className="text-slate-500 text-xs flex items-center gap-1">
+                        <div className={`w-2 h-2 rounded-full ${files.some(f => f.status === ProcessingStatus.ANALYZING) ? 'bg-indigo-500 animate-pulse' : 'bg-emerald-500'}`}></div>
+                        {files.some(f => f.status === ProcessingStatus.ANALYZING) ? 'Processing...' : 'Ready'}
+                      </span>
+                    </>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  
+                  {/* Generate Button (Primary Action) */}
+                  {pendingFilesCount > 0 && (
+                    <button 
+                      onClick={handleGenerateAll}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 animate-in zoom-in-95 font-semibold"
+                    >
+                      <Sparkles size={16} />
+                      Generate Metadata ({pendingFilesCount})
+                    </button>
+                  )}
+
+                  {/* Select All Toggle (if none selected yet) */}
+                  {selectedCount === 0 && (
+                    <button 
                       onClick={handleSelectAll}
-                      className="text-indigo-400 font-medium text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-indigo-500/10 transition-colors"
-                   >
-                     <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedCount === files.length ? 'bg-indigo-500 border-indigo-500' : 'border-indigo-400'}`}>
-                        {selectedCount === files.length && <CheckSquare size={10} className="text-white" />}
-                     </div>
-                     {selectedCount} Selected
-                   </button>
-                 </div>
-               ) : (
-                 <>
-                   <span className={`font-medium text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                     {files.length} Asset{files.length !== 1 ? 's' : ''}
-                   </span>
-                   <span className="w-px h-4 bg-slate-700"></span>
-                   <span className="text-slate-500 text-xs flex items-center gap-1">
-                     <div className={`w-2 h-2 rounded-full ${files.some(f => f.status === ProcessingStatus.ANALYZING) ? 'bg-indigo-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                     {files.some(f => f.status === ProcessingStatus.ANALYZING) ? 'Processing...' : 'Ready'}
-                   </span>
-                 </>
-               )}
+                      className={`text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
+                        isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <CheckSquare size={16} />
+                      Select All
+                    </button>
+                  )}
+
+                  {/* Bulk Edit Button */}
+                  {selectedCount > 0 && (
+                    <button 
+                      onClick={() => setIsBulkModalOpen(true)}
+                      className={`text-white text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all animate-in zoom-in-95 ${
+                        isDarkMode ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-600 hover:bg-slate-500'
+                      }`}
+                    >
+                      <Edit3 size={16} />
+                      Bulk Edit
+                    </button>
+                  )}
+
+                  <div className="w-px h-4 bg-slate-700"></div>
+
+                  {/* Rename Toggle */}
+                  <label className="flex items-center gap-2 cursor-pointer group px-2 select-none">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                        renameOnExport 
+                          ? 'bg-indigo-500 border-indigo-500' 
+                          : (isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-slate-100')
+                      }`}>
+                          {renameOnExport && <CheckSquare size={10} className="text-white" />}
+                      </div>
+                      <input 
+                          type="checkbox" 
+                          className="hidden" 
+                          checked={renameOnExport} 
+                          onChange={e => setRenameOnExport(e.target.checked)} 
+                      />
+                      <span className={`text-xs font-medium ${
+                        renameOnExport 
+                          ? 'text-indigo-400' 
+                          : (isDarkMode ? 'text-slate-400 group-hover:text-slate-300' : 'text-slate-500 group-hover:text-slate-700')
+                      }`}>
+                          Rename files
+                      </span>
+                  </label>
+
+                  <button 
+                    onClick={handleExportZip}
+                    disabled={!files.some(f => f.status === ProcessingStatus.COMPLETED) || isExporting}
+                    className={`text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors disabled:cursor-not-allowed min-w-[120px] justify-center ${
+                      !files.some(f => f.status === ProcessingStatus.COMPLETED) || isExporting
+                      ? 'text-slate-400 hover:bg-transparent'
+                      : 'text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10'
+                    }`}
+                  >
+                    {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                    {isExporting ? 'Zipping...' : 'Export ZIP'}
+                  </button>
+                  
+                  <div className="w-px h-4 bg-slate-700"></div>
+
+                  <button 
+                    onClick={handleClearAll}
+                    className="text-red-400 hover:text-red-500 text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                    Clear All
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* List of Cards */}
+            <div className="space-y-6">
+              {files.map(file => (
+                <MetadataCard 
+                  key={file.id} 
+                  item={file} 
+                  isSelected={selectedIds.has(file.id)}
+                  onToggleSelect={handleToggleSelect}
+                  onRemove={handleRemoveFile} 
+                  onRegenerate={handleRegenerate}
+                  onUpdateMetadata={handleUpdateMetadata}
+                  onAddTrending={handleAddTrending}
+                  apiKey={apiKey}
+                />
+              ))}
             </div>
-            
-            <div className="flex items-center gap-3">
-              
-               {/* Generate Button (Primary Action) */}
-               {pendingFilesCount > 0 && (
-                <button 
-                  onClick={handleGenerateAll}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 animate-in zoom-in-95 font-semibold"
-                >
-                  <Sparkles size={16} />
-                  Generate Metadata ({pendingFilesCount})
-                </button>
-              )}
 
-              {/* Select All Toggle (if none selected yet) */}
-              {selectedCount === 0 && (
-                <button 
-                  onClick={handleSelectAll}
-                  className={`text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-                    isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <CheckSquare size={16} />
-                  Select All
-                </button>
-              )}
-
-              {/* Bulk Edit Button */}
-              {selectedCount > 0 && (
-                <button 
-                  onClick={() => setIsBulkModalOpen(true)}
-                  className={`text-white text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all animate-in zoom-in-95 ${
-                    isDarkMode ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-600 hover:bg-slate-500'
-                  }`}
-                >
-                  <Edit3 size={16} />
-                  Bulk Edit
-                </button>
-              )}
-
-              <div className="w-px h-4 bg-slate-700"></div>
-
-              {/* Rename Toggle */}
-              <label className="flex items-center gap-2 cursor-pointer group px-2 select-none">
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                    renameOnExport 
-                      ? 'bg-indigo-500 border-indigo-500' 
-                      : (isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-slate-100')
-                  }`}>
-                      {renameOnExport && <CheckSquare size={10} className="text-white" />}
-                  </div>
-                  <input 
-                      type="checkbox" 
-                      className="hidden" 
-                      checked={renameOnExport} 
-                      onChange={e => setRenameOnExport(e.target.checked)} 
-                  />
-                  <span className={`text-xs font-medium ${
-                    renameOnExport 
-                      ? 'text-indigo-400' 
-                      : (isDarkMode ? 'text-slate-400 group-hover:text-slate-300' : 'text-slate-500 group-hover:text-slate-700')
-                  }`}>
-                      Rename files
-                  </span>
-              </label>
-
-              <button 
-                onClick={handleExportZip}
-                disabled={!files.some(f => f.status === ProcessingStatus.COMPLETED) || isExporting}
-                className={`text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors disabled:cursor-not-allowed min-w-[120px] justify-center ${
-                  !files.some(f => f.status === ProcessingStatus.COMPLETED) || isExporting
-                   ? 'text-slate-400 hover:bg-transparent'
-                   : 'text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10'
-                }`}
-              >
-                {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                {isExporting ? 'Zipping...' : 'Export ZIP'}
-              </button>
-              
-              <div className="w-px h-4 bg-slate-700"></div>
-
-              <button 
-                onClick={handleClearAll}
-                className="text-red-400 hover:text-red-500 text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
-              >
-                <Trash2 size={16} />
-                Clear All
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* List of Cards */}
-        <div className="space-y-6">
-          {files.map(file => (
-            <MetadataCard 
-              key={file.id} 
-              item={file} 
-              isSelected={selectedIds.has(file.id)}
-              onToggleSelect={handleToggleSelect}
-              onRemove={handleRemoveFile} 
-              onRegenerate={handleRegenerate}
-              onUpdateMetadata={handleUpdateMetadata}
-              onAddTrending={handleAddTrending}
-              apiKey={apiKey}
-            />
-          ))}
-        </div>
-
-        {/* Empty State Help */}
-        {files.length === 0 && (
-           <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-             <div className={`p-6 rounded-xl border transition-colors ${
-                isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-             }`}>
-                <div className="w-10 h-10 bg-indigo-500/20 text-indigo-500 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Aperture size={20} />
+            {/* Empty State Help */}
+            {files.length === 0 && (
+              <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                <div className={`p-6 rounded-xl border transition-colors ${
+                    isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                }`}>
+                    <div className="w-10 h-10 bg-indigo-500/20 text-indigo-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <Aperture size={20} />
+                    </div>
+                    <h3 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Vision Analysis</h3>
+                    <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Deeply analyzes composition, mood, and objects to generate accurate metadata.</p>
                 </div>
-                <h3 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Vision Analysis</h3>
-                <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Deeply analyzes composition, mood, and objects to generate accurate metadata.</p>
-             </div>
-             <div className={`p-6 rounded-xl border transition-colors ${
-                isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-             }`}>
-                <div className="w-10 h-10 bg-emerald-500/20 text-emerald-500 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Zap size={20} />
+                <div className={`p-6 rounded-xl border transition-colors ${
+                    isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                }`}>
+                    <div className="w-10 h-10 bg-emerald-500/20 text-emerald-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <Zap size={20} />
+                    </div>
+                    <h3 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Vectors Supported</h3>
+                    <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Upload EPS/AI files with matching JPG previews. They get renamed together on export.</p>
                 </div>
-                <h3 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Vectors Supported</h3>
-                <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Upload EPS/AI files with matching JPG previews. They get renamed together on export.</p>
-             </div>
-             <div className={`p-6 rounded-xl border transition-colors ${
-                isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
-             }`}>
-                <div className="w-10 h-10 bg-purple-500/20 text-purple-500 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <TrendingUp size={20} />
+                <div className={`p-6 rounded-xl border transition-colors ${
+                    isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                }`}>
+                    <div className="w-10 h-10 bg-purple-500/20 text-purple-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <TrendingUp size={20} />
+                    </div>
+                    <h3 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Trend Data</h3>
+                    <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Cross-reference with Google Search data to find high-traffic keywords.</p>
                 </div>
-                <h3 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Trend Data</h3>
-                <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Cross-reference with Google Search data to find high-traffic keywords.</p>
-             </div>
-           </div>
+              </div>
+            )}
+          </>
         )}
 
       </main>
@@ -759,6 +788,12 @@ function App() {
          <div className="max-w-6xl mx-auto px-4 flex justify-between items-center text-sm">
             <p className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>&copy; 2025 - 2030 StockMeta AI. Powered by Google Gemini.</p>
             <div className="flex gap-4">
+               <button 
+                 onClick={() => setView('about')}
+                 className={`transition-colors hover:underline ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}
+               >
+                 About
+               </button>
                <a href="#" className={`transition-colors ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}><Github size={18} /></a>
             </div>
          </div>
