@@ -97,9 +97,16 @@ function App() {
           : f
       ));
     } catch (error) {
+      const errorMsg = (error as Error).message;
+      
+      // Auto-open API Key modal if invalid
+      if (errorMsg.includes("Invalid API Key")) {
+          setIsApiKeyModalOpen(true);
+      }
+
       setFiles(prev => prev.map(f => 
         f.id === fileObj.id 
-          ? { ...f, status: ProcessingStatus.ERROR, error: (error as Error).message } 
+          ? { ...f, status: ProcessingStatus.ERROR, error: errorMsg } 
           : f
       ));
     }

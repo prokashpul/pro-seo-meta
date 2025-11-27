@@ -163,7 +163,7 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
   const TITLE_MIN = 55;
   const TITLE_MAX = 150;
   const DESC_MIN = 100;
-  const DESC_MAX = 199;
+  const DESC_MAX = 180;
   const KEYWORD_MIN = 35;
   const KEYWORD_MAX = 49;
 

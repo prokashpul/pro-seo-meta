@@ -11,7 +11,7 @@ const metadataSchema: Schema = {
     },
     description: {
       type: Type.STRING,
-      description: "A detailed description of the image content, mood, and technical aspects (strictly between 100 and 199 characters).",
+      description: "A detailed description of the image content, mood, and technical aspects (strictly between 100 and 180 characters).",
     },
     keywords: {
       type: Type.ARRAY,
@@ -38,9 +38,17 @@ async function generateWithRetry(
   try {
     return await ai.models.generateContent(params);
   } catch (e: any) {
+    const msg = e.message || '';
+    const status = e.status;
+
+    // 1. Check for Invalid API Key
+    if (msg.includes('API key not valid') || msg.includes('API_KEY_INVALID')) {
+        throw new Error("Invalid API Key. Please click the 'API Key' button to update it.");
+    }
+
     // Check for 429 (Quota Exceeded) or 503 (Service Unavailable)
-    const isQuota = e.status === 429 || (e.message && (e.message.includes('429') || e.message.includes('quota') || e.message.includes('RESOURCE_EXHAUSTED')));
-    const isServer = e.status >= 500;
+    const isQuota = status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
+    const isServer = status >= 500;
     
     if ((isQuota || isServer) && retries > 0) {
         // STRATEGY: If Pro model hits quota, immediately fallback to Flash to avoid user wait time.
@@ -64,9 +72,14 @@ async function generateWithRetry(
 
         // For other errors or if already on fallback, use exponential backoff
         const delay = Math.pow(2, 4 - retries) * 1000; // 2s, 4s, 8s
-        console.log(`API Error (${e.status}). Retrying in ${delay}ms...`);
+        console.log(`API Error (${status}). Retrying in ${delay}ms...`);
         await new Promise(r => setTimeout(r, delay));
         return generateWithRetry(ai, params, isProMode, retries - 1);
+    }
+    
+    // If we run out of retries and it was a quota error
+    if (isQuota) {
+        throw new Error("Quota exceeded. The API rate limit has been reached. Please try again later.");
     }
     
     // If we run out of retries or it's a non-retriable error
@@ -98,7 +111,7 @@ export const generateImageMetadata = async (
       
       Generate metadata that maximizes SEO potential.
       1. Title: Catchy, descriptive, and relevant. MUST be between 55 and 150 characters in length.
-      2. Description: Detailed, natural language. STRICTLY between 100 and 199 characters in length. Do not generate less than 100 or more than 199 characters.
+      2. Description: Detailed, natural language. STRICTLY between 100 and 180 characters in length. Do not generate less than 100 or more than 180 characters.
       3. Keywords: Provide 35-49 keywords. Include conceptual tags (e.g., "success", "freedom") and literal tags (e.g., "blue sky", "laptop").
       4. Category: Choose the single best standard category.
       
