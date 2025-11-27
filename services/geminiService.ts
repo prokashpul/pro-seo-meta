@@ -26,6 +26,54 @@ const metadataSchema: Schema = {
   required: ["title", "description", "keywords", "category"],
 };
 
+/**
+ * Helper to handle retries and model fallbacks for resilience.
+ */
+async function generateWithRetry(
+  ai: GoogleGenAI, 
+  params: any, 
+  isProMode: boolean, 
+  retries = 3
+): Promise<any> {
+  try {
+    return await ai.models.generateContent(params);
+  } catch (e: any) {
+    // Check for 429 (Quota Exceeded) or 503 (Service Unavailable)
+    const isQuota = e.status === 429 || (e.message && (e.message.includes('429') || e.message.includes('quota') || e.message.includes('RESOURCE_EXHAUSTED')));
+    const isServer = e.status >= 500;
+    
+    if ((isQuota || isServer) && retries > 0) {
+        // STRATEGY: If Pro model hits quota, immediately fallback to Flash to avoid user wait time.
+        // gemini-2.5-flash has higher limits than 3-pro-preview.
+        if (isQuota && isProMode) {
+            console.warn("Quota exceeded on Pro model. Falling back to Gemini 2.5 Flash for resilience.");
+            
+            const fallbackParams = {
+                ...params,
+                model: 'gemini-2.5-flash',
+                // Remove thinking config for fallback to ensure speed/compatibility and save tokens
+                config: {
+                    ...params.config,
+                    thinkingConfig: undefined 
+                }
+            };
+            
+            // Recursive call with fallback params, setting isProMode to false so we don't fallback again unnecessarily
+            return generateWithRetry(ai, fallbackParams, false, retries - 1);
+        }
+
+        // For other errors or if already on fallback, use exponential backoff
+        const delay = Math.pow(2, 4 - retries) * 1000; // 2s, 4s, 8s
+        console.log(`API Error (${e.status}). Retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+        return generateWithRetry(ai, params, isProMode, retries - 1);
+    }
+    
+    // If we run out of retries or it's a non-retriable error
+    throw e;
+  }
+}
+
 export const generateImageMetadata = async (
   base64Data: string,
   mimeType: string,
@@ -37,7 +85,8 @@ export const generateImageMetadata = async (
     // Select model based on user preference
     // Quality: gemini-3-pro-preview (Best for vision)
     // Fast: gemini-flash-lite-latest (Fastest)
-    const modelName = mode === ModelMode.QUALITY ? 'gemini-3-pro-preview' : 'gemini-flash-lite-latest';
+    const primaryModel = mode === ModelMode.QUALITY ? 'gemini-3-pro-preview' : 'gemini-flash-lite-latest';
+    const isPro = mode === ModelMode.QUALITY;
 
     const prompt = `
       You are an expert stock photography contributor for Adobe Stock and Shutterstock.
@@ -52,8 +101,9 @@ export const generateImageMetadata = async (
       Ensure the output is strict JSON.
     `;
 
-    const response = await ai.models.generateContent({
-      model: modelName,
+    // Use the retry wrapper
+    const response = await generateWithRetry(ai, {
+      model: primaryModel,
       contents: {
         parts: [
           {
@@ -70,10 +120,10 @@ export const generateImageMetadata = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: metadataSchema,
-        // If using pro model, we can give it more thinking budget for better keywords
-        thinkingConfig: mode === ModelMode.QUALITY ? { thinkingBudget: 2048 } : undefined,
+        // Only apply thinking budget if we are starting with the Quality model
+        thinkingConfig: isPro ? { thinkingBudget: 2048 } : undefined,
       }
-    });
+    }, isPro);
 
     if (!response.text) {
       throw new Error("No response text generated");
@@ -108,10 +158,6 @@ export const getTrendingKeywords = async (baseKeywords: string[]): Promise<strin
       }
     });
 
-    // Clean up response to extract just the words if possible, or parse standard text
-    // Since we can't force JSON with search tools easily without Schema, we'll ask for a list and parse roughly.
-    // Or we can just return the raw text if it's clean enough. 
-    // Let's try to extract lines.
     const text = response.text || "";
     const lines = text.split('\n')
       .map(line => line.replace(/^[\d-]*\.\s*/, '').trim()) // remove numbering

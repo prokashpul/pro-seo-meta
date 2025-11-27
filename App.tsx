@@ -5,7 +5,8 @@ import { optimizeImage } from './services/imageOptimizer';
 import { FileUploader } from './components/FileUploader';
 import { MetadataCard } from './components/MetadataCard';
 import { BulkKeywordModal, BulkActionType } from './components/BulkKeywordModal';
-import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key } from 'lucide-react';
+import { Login } from './components/Login';
+import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut } from 'lucide-react';
 import JSZip from 'jszip';
 
 // Declare global interface for AI Studio bridge
@@ -19,6 +20,8 @@ declare global {
 const MAX_PARALLEL_UPLOADS = 3;
 
 function App() {
+  const [user, setUser] = useState<{name: string, email: string, avatar: string} | null>(null);
+  
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [modelMode, setModelMode] = useState<ModelMode>(ModelMode.QUALITY);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -35,6 +38,42 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
+
+  // Auto-Check API Key on Login
+  useEffect(() => {
+    if (user && window.aistudio) {
+      const checkAndPromptKey = async () => {
+        try {
+          const hasKey = await window.aistudio.hasSelectedApiKey();
+          if (!hasKey) {
+             // Automatically open key selection if not set
+             await window.aistudio.openSelectKey();
+          }
+        } catch (e) {
+          console.error("Failed to check/prompt API key", e);
+        }
+      };
+      
+      // Small delay to ensure UI is ready
+      const t = setTimeout(checkAndPromptKey, 500);
+      return () => clearTimeout(t);
+    }
+  }, [user]);
+
+  const handleLogin = () => {
+    // Simulate Google Login
+    setUser({
+      name: 'Demo User',
+      email: 'user@example.com',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' 
+    });
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setFiles([]);
+    setSelectedIds(new Set());
+  };
   
   const processFile = async (fileObj: UploadedFile) => {
     // Cannot process vectors without a preview image
@@ -328,6 +367,16 @@ function App() {
     }));
   };
 
+  if (!user) {
+    return (
+      <Login 
+        onLogin={handleLogin} 
+        isDarkMode={isDarkMode} 
+        toggleTheme={() => setIsDarkMode(!isDarkMode)} 
+      />
+    );
+  }
+
   const selectedCount = selectedIds.size;
   const pendingFilesCount = files.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR).length;
 
@@ -374,7 +423,7 @@ function App() {
               </button>
 
             {/* Mode Switcher */}
-            <div className={`p-1 rounded-lg flex items-center border transition-colors ${
+            <div className={`hidden sm:flex p-1 rounded-lg items-center border transition-colors ${
               isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
             }`}>
               <button
@@ -401,19 +450,43 @@ function App() {
               </button>
             </div>
 
-            {/* API Key Button */}
-            <button
-                onClick={() => window.aistudio.openSelectKey()}
-                className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
-                  isDarkMode 
-                    ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
-                    : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
-                }`}
-                title="Manage API Key"
-              >
-                <Key size={14} />
-                <span className="hidden sm:inline">API Key</span>
-              </button>
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+
+            {/* API Key & User Profile */}
+            <div className="flex items-center gap-3">
+               <button
+                  onClick={() => window.aistudio.openSelectKey()}
+                  className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
+                      : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
+                  }`}
+                  title="Manage API Key"
+                >
+                  <Key size={14} />
+                  <span className="hidden sm:inline">API Key</span>
+                </button>
+
+                <div className="relative group">
+                   <img 
+                     src={user.avatar} 
+                     alt={user.name}
+                     className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 cursor-pointer object-cover" 
+                   />
+                   
+                   {/* Dropdown / Sign Out */}
+                   <div className="absolute top-full right-0 mt-2 w-32 bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-lg rounded-lg overflow-hidden hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-2">
+                       <button 
+                         onClick={handleLogout} 
+                         className="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                       >
+                          <LogOut size={12} />
+                          Sign Out
+                       </button>
+                   </div>
+                </div>
+            </div>
+
           </div>
         </div>
       </header>
