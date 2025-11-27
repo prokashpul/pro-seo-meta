@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, TrendingUp, RefreshCw, X, AlertCircle, Cloud, Loader2, FileType, Sparkles } from 'lucide-react';
+import { Copy, Check, TrendingUp, RefreshCw, X, AlertCircle, Cloud, Loader2, FileType, Sparkles, Trash2 } from 'lucide-react';
 import { UploadedFile, StockMetadata, ProcessingStatus } from '../types';
 import { getTrendingKeywords } from '../services/geminiService';
 
@@ -8,6 +8,7 @@ interface MetadataCardProps {
   isSelected: boolean;
   onToggleSelect: (id: string) => void;
   onRemove: (id: string) => void;
+  onRegenerate: (id: string) => void;
   onUpdateMetadata: (id: string, metadata: StockMetadata) => void;
   onAddTrending: (id: string, trending: string[]) => void;
   apiKey?: string;
@@ -18,6 +19,7 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
   isSelected,
   onToggleSelect,
   onRemove, 
+  onRegenerate,
   onUpdateMetadata, 
   onAddTrending,
   apiKey
@@ -160,7 +162,8 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
   // Limits
   const TITLE_MIN = 55;
   const TITLE_MAX = 150;
-  const DESC_MAX = 180;
+  const DESC_MIN = 100;
+  const DESC_MAX = 199;
   const KEYWORD_MIN = 35;
   const KEYWORD_MAX = 49;
 
@@ -252,17 +255,8 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
       {/* Metadata Form Section */}
       <div className="md:w-2/3 p-6 flex flex-col relative">
         
-        {/* Delete Button */}
-        <button 
-          onClick={() => onRemove(item.id)}
-          className="absolute top-4 right-4 text-slate-400 hover:text-red-500 transition-colors z-20"
-          title="Remove File"
-        >
-          <X size={20} />
-        </button>
-
         {/* Save Status Indicator */}
-        <div className={`absolute top-4 right-12 text-xs font-medium flex items-center gap-1 transition-opacity duration-500 ${saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`absolute top-4 right-6 text-xs font-medium flex items-center gap-1 transition-opacity duration-500 ${saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
             {saveStatus === 'saving' && <span className="text-indigo-500 flex items-center gap-1"><Loader2 size={10} className="animate-spin" /> Saving...</span>}
             {saveStatus === 'saved' && <span className="text-emerald-500 flex items-center gap-1"><Check size={10} /> Saved</span>}
             {saveStatus === 'modified' && <span className="text-amber-500">Unsaved</span>}
@@ -305,8 +299,12 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</label>
                  <div className="flex items-center gap-2">
-                   <span className={`text-[10px] ${displayMetadata.description.length > DESC_MAX ? 'text-red-500' : 'text-slate-400'}`}>
-                       {DESC_MAX - displayMetadata.description.length} chars left
+                   <span className={`text-[10px] ${
+                       displayMetadata.description.length < DESC_MIN || displayMetadata.description.length > DESC_MAX
+                       ? 'text-red-500 font-bold' 
+                       : 'text-emerald-500'
+                    }`}>
+                       {displayMetadata.description.length} / {DESC_MAX} chars (Min {DESC_MIN})
                    </span>
                    <button onClick={() => copyToClipboard(displayMetadata.description, 'description')} className="text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
                      {copiedField === 'description' ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
@@ -319,7 +317,11 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                 onBlur={handleBlur}
                 rows={2}
                 maxLength={DESC_MAX}
-                className="w-full p-2.5 text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none"
+                className={`w-full p-2.5 text-sm text-slate-700 dark:text-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none ${
+                    displayMetadata.description.length < DESC_MIN || displayMetadata.description.length > DESC_MAX
+                    ? 'border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/10'
+                    : 'border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
+                }`}
               />
             </div>
 
@@ -395,8 +397,6 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                     </button>
                   </span>
                 ))}
-                
-                {/* Add Keyword Input could go here */}
               </div>
             </div>
           </div>
@@ -408,30 +408,52 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
            </div>
         )}
         
-        {/* Category (Bottom Right) */}
-        {displayMetadata && (
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                     <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Category:</span>
-                     <select 
-                        value={displayMetadata.category}
-                        onChange={(e) => handleLocalChange('category', e.target.value)}
-                        onBlur={handleBlur}
-                        className="text-xs font-medium text-slate-700 dark:text-slate-300 bg-transparent border-none focus:ring-0 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400"
-                     >
-                         <option value={displayMetadata.category}>{displayMetadata.category}</option>
-                         <option value="Business">Business</option>
-                         <option value="Technology">Technology</option>
-                         <option value="Nature">Nature</option>
-                         <option value="People">People</option>
-                         <option value="Lifestyle">Lifestyle</option>
-                         <option value="Architecture">Architecture</option>
-                         <option value="Food & Drink">Food & Drink</option>
-                         <option value="Travel">Travel</option>
-                     </select>
-                </div>
+        {/* Footer Actions (Bottom Right) */}
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+             <div className="flex items-center gap-2">
+                 <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Category:</span>
+                 <select 
+                    value={displayMetadata ? displayMetadata.category : ''}
+                    disabled={!displayMetadata}
+                    onChange={(e) => handleLocalChange('category', e.target.value)}
+                    onBlur={handleBlur}
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300 bg-transparent border-none focus:ring-0 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                     <option value={displayMetadata ? displayMetadata.category : ''}>{displayMetadata ? displayMetadata.category : 'None'}</option>
+                     <option value="Business">Business</option>
+                     <option value="Technology">Technology</option>
+                     <option value="Nature">Nature</option>
+                     <option value="People">People</option>
+                     <option value="Lifestyle">Lifestyle</option>
+                     <option value="Architecture">Architecture</option>
+                     <option value="Food & Drink">Food & Drink</option>
+                     <option value="Travel">Travel</option>
+                 </select>
             </div>
-        )}
+
+            <div className="flex items-center gap-2">
+                 <button 
+                    onClick={() => onRegenerate(item.id)}
+                    disabled={isProcessing}
+                    className={`p-2 rounded-lg transition-colors ${
+                        isProcessing 
+                        ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                        : 'text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                    }`}
+                    title="Regenerate Metadata"
+                 >
+                    <RefreshCw size={16} className={isProcessing ? "animate-spin" : ""} />
+                 </button>
+                 
+                 <button 
+                    onClick={() => onRemove(item.id)}
+                    className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    title="Remove File"
+                 >
+                    <Trash2 size={16} />
+                 </button>
+            </div>
+        </div>
       </div>
     </div>
   );

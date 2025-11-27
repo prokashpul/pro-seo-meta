@@ -11,7 +11,7 @@ const metadataSchema: Schema = {
     },
     description: {
       type: Type.STRING,
-      description: "A detailed description of the image content, mood, and technical aspects (max 200 chars).",
+      description: "A detailed description of the image content, mood, and technical aspects (strictly between 100 and 199 characters).",
     },
     keywords: {
       type: Type.ARRAY,
@@ -98,7 +98,7 @@ export const generateImageMetadata = async (
       
       Generate metadata that maximizes SEO potential.
       1. Title: Catchy, descriptive, and relevant. MUST be between 55 and 150 characters in length.
-      2. Description: Detailed, natural language, under 200 characters. Includes subject, action, and setting.
+      2. Description: Detailed, natural language. STRICTLY between 100 and 199 characters in length. Do not generate less than 100 or more than 199 characters.
       3. Keywords: Provide 35-49 keywords. Include conceptual tags (e.g., "success", "freedom") and literal tags (e.g., "blue sky", "laptop").
       4. Category: Choose the single best standard category.
       

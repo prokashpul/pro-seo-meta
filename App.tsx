@@ -190,6 +190,17 @@ function App() {
     const toProcess = files.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR);
     toProcess.forEach(f => processFile(f));
   };
+  
+  const handleRegenerate = (id: string) => {
+    if (!apiKey && !process.env.API_KEY) {
+        setIsApiKeyModalOpen(true);
+        return;
+    }
+    const file = files.find(f => f.id === id);
+    if (file) {
+        processFile(file);
+    }
+  };
 
   const handleRemoveFile = (id: string) => {
     setFiles(prev => {
@@ -211,13 +222,6 @@ function App() {
   };
 
   const handleAddTrending = async (id: string, trending: string[]) => {
-      // NOTE: getTrendingKeywords is called inside MetadataCard, 
-      // but if we were calling it here we'd pass apiKey.
-      // MetadataCard needs updating? No, MetadataCard calls getTrendingKeywords directly.
-      // We should probably inject the API key or service method into MetadataCard, 
-      // but simpler is to let MetadataCard import the service, but the service needs the key.
-      // We will handle this by making MetadataCard accept the current apiKey prop or updated service signature.
-      // Actually MetadataCard calls `getTrendingKeywords`. We need to update MetadataCard to use the `apiKey` from context or props.
       setFiles(prev => prev.map(f => f.id === id ? { ...f, trendingContext: trending } : f));
   };
 
@@ -664,6 +668,7 @@ function App() {
               isSelected={selectedIds.has(file.id)}
               onToggleSelect={handleToggleSelect}
               onRemove={handleRemoveFile} 
+              onRegenerate={handleRegenerate}
               onUpdateMetadata={handleUpdateMetadata}
               onAddTrending={handleAddTrending}
               apiKey={apiKey}
@@ -711,7 +716,7 @@ function App() {
         isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
       }`}>
          <div className="max-w-6xl mx-auto px-4 flex justify-between items-center text-sm">
-            <p className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>&copy; 2024 StockMeta AI. Powered by Google Gemini.</p>
+            <p className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>&copy; 2025 - 2030 StockMeta AI. Powered by Google Gemini.</p>
             <div className="flex gap-4">
                <a href="#" className={`transition-colors ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}><Github size={18} /></a>
             </div>
