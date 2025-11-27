@@ -494,7 +494,13 @@ function App() {
                    />
                    
                    {/* Dropdown / Sign Out */}
-                   <div className="absolute top-full right-0 mt-2 w-32 bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-lg rounded-lg overflow-hidden hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-2">
+                   <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-lg rounded-lg overflow-hidden hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-2">
+                       {/* User Info Section */}
+                       <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+                           <p className="text-sm font-semibold text-slate-900 dark:text-white truncate" title={user.name}>{user.name}</p>
+                           <p className="text-xs text-slate-500 dark:text-slate-400 truncate" title={user.email}>{user.email}</p>
+                       </div>
+                       
                        <button 
                          onClick={handleLogout} 
                          className="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
