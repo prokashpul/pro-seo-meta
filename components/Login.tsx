@@ -69,15 +69,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isLoggingIn, isDarkMode, 
             </svg>
           )}
           <span className="group-hover:text-slate-900 dark:group-hover:text-white transition-colors relative z-10">
-            {isLoggingIn ? 'Connecting to Google...' : 'Sign in with Google'}
+            {isLoggingIn ? 'Signing in...' : 'Sign in with Google'}
           </span>
         </button>
-
-        <div className="mt-8 text-xs text-slate-400 dark:text-slate-500">
-          This will open the Google AI Studio secure key selection dialog.
-          <br/>
-          By signing in, you agree to our Terms of Service.
-        </div>
       </div>
       
       <div className="mt-8 text-slate-400 dark:text-slate-600 text-sm">

@@ -77,10 +77,14 @@ async function generateWithRetry(
 export const generateImageMetadata = async (
   base64Data: string,
   mimeType: string,
-  mode: ModelMode
+  mode: ModelMode,
+  apiKey?: string
 ): Promise<StockMetadata> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const key = apiKey || process.env.API_KEY;
+    if (!key) throw new Error("API Key is missing. Please add your Gemini API Key.");
+
+    const ai = new GoogleGenAI({ apiKey: key });
     
     // Select model based on user preference
     // Quality: gemini-3-pro-preview (Best for vision)
@@ -138,9 +142,12 @@ export const generateImageMetadata = async (
   }
 };
 
-export const getTrendingKeywords = async (baseKeywords: string[]): Promise<string[]> => {
+export const getTrendingKeywords = async (baseKeywords: string[], apiKey?: string): Promise<string[]> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const key = apiKey || process.env.API_KEY;
+    if (!key) throw new Error("API Key is missing");
+
+    const ai = new GoogleGenAI({ apiKey: key });
     
     // Use flash + search for trending data
     const modelName = 'gemini-2.5-flash';

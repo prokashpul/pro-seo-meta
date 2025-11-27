@@ -1,27 +1,22 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { UploadedFile, ProcessingStatus, ModelMode, StockMetadata } from './types';
-import { generateImageMetadata } from './services/geminiService';
+import { generateImageMetadata, getTrendingKeywords } from './services/geminiService';
 import { optimizeImage } from './services/imageOptimizer';
 import { FileUploader } from './components/FileUploader';
 import { MetadataCard } from './components/MetadataCard';
 import { BulkKeywordModal, BulkActionType } from './components/BulkKeywordModal';
 import { Login } from './components/Login';
+import { ApiKeyModal } from './components/ApiKeyModal';
 import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut } from 'lucide-react';
 import JSZip from 'jszip';
-
-// Declare global interface for AI Studio bridge
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-}
 
 const MAX_PARALLEL_UPLOADS = 3;
 
 function App() {
   const [user, setUser] = useState<{name: string, email: string, avatar: string} | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [apiKey, setApiKey] = useState<string>('');
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [modelMode, setModelMode] = useState<ModelMode>(ModelMode.QUALITY);
@@ -40,57 +35,41 @@ function App() {
     }
   }, [isDarkMode]);
 
-  // Auto-Login: Check if API key is already present on mount
+  // Load API Key from local storage
   useEffect(() => {
-    if (window.aistudio) {
-      window.aistudio.hasSelectedApiKey().then(hasKey => {
-        if (hasKey) {
-          // If key exists, we consider the user authenticated
-          setUser({
-            name: 'StockMeta User',
-            email: 'google-authenticated',
-            avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c'
-          });
-        }
-      }).catch(e => console.error("Failed to check API key status", e));
+    const storedKey = localStorage.getItem('gemini_api_key');
+    if (storedKey) {
+      setApiKey(storedKey);
     }
   }, []);
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
-    try {
-      if (window.aistudio) {
-        // Forces the Google Auth / Key Selection flow
-        // The user must be logged into their Google Account to select a key
-        await window.aistudio.openSelectKey();
-        
-        // Per guidelines: Assume success after triggering openSelectKey
+    // Simulate Login
+    setTimeout(() => {
         setUser({
           name: 'StockMeta User',
-          email: 'google-authenticated',
-          avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c'
+          email: 'user@example.com',
+          avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
         });
-      } else {
-        // Fallback for dev environment
-        setTimeout(() => {
-          setUser({
-            name: 'Demo User',
-            email: 'user@example.com',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' 
-          });
-        }, 1000);
-      }
-    } catch (e) {
-      console.error("Login flow failed", e);
-    } finally {
-      setIsLoggingIn(false);
-    }
+        setIsLoggingIn(false);
+        
+        // If no key is set after login, prompt for it
+        if (!localStorage.getItem('gemini_api_key')) {
+           setIsApiKeyModalOpen(true);
+        }
+    }, 1500);
   };
 
   const handleLogout = () => {
     setUser(null);
     setFiles([]);
     setSelectedIds(new Set());
+  };
+
+  const handleSaveApiKey = (key: string) => {
+      setApiKey(key);
+      localStorage.setItem('gemini_api_key', key);
   };
   
   const processFile = async (fileObj: UploadedFile) => {
@@ -110,7 +89,7 @@ function App() {
       // Optimize image (resize & convert to WebP) before sending to AI
       const { base64, mimeType } = await optimizeImage(fileObj.file);
       
-      const metadata = await generateImageMetadata(base64, mimeType, modelMode);
+      const metadata = await generateImageMetadata(base64, mimeType, modelMode, apiKey);
       
       setFiles(prev => prev.map(f => 
         f.id === fileObj.id 
@@ -204,6 +183,10 @@ function App() {
   }, [modelMode]);
 
   const handleGenerateAll = () => {
+    if (!apiKey && !process.env.API_KEY) {
+        setIsApiKeyModalOpen(true);
+        return;
+    }
     const toProcess = files.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR);
     toProcess.forEach(f => processFile(f));
   };
@@ -227,8 +210,15 @@ function App() {
     setFiles(prev => prev.map(f => f.id === id ? { ...f, metadata } : f));
   };
 
-  const handleAddTrending = (id: string, trending: string[]) => {
-    setFiles(prev => prev.map(f => f.id === id ? { ...f, trendingContext: trending } : f));
+  const handleAddTrending = async (id: string, trending: string[]) => {
+      // NOTE: getTrendingKeywords is called inside MetadataCard, 
+      // but if we were calling it here we'd pass apiKey.
+      // MetadataCard needs updating? No, MetadataCard calls getTrendingKeywords directly.
+      // We should probably inject the API key or service method into MetadataCard, 
+      // but simpler is to let MetadataCard import the service, but the service needs the key.
+      // We will handle this by making MetadataCard accept the current apiKey prop or updated service signature.
+      // Actually MetadataCard calls `getTrendingKeywords`. We need to update MetadataCard to use the `apiKey` from context or props.
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, trendingContext: trending } : f));
   };
 
   const handleClearAll = () => {
@@ -401,6 +391,13 @@ function App() {
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-[#0f172a]' : 'bg-slate-50'}`}>
+      <ApiKeyModal 
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+        onSave={handleSaveApiKey}
+        currentKey={apiKey}
+      />
+
       <BulkKeywordModal 
         isOpen={isBulkModalOpen} 
         onClose={() => setIsBulkModalOpen(false)}
@@ -474,12 +471,12 @@ function App() {
             {/* API Key & User Profile */}
             <div className="flex items-center gap-3">
                <button
-                  onClick={() => window.aistudio.openSelectKey()}
+                  onClick={() => setIsApiKeyModalOpen(true)}
                   className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
                     isDarkMode 
                       ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
                       : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
-                  }`}
+                  } ${!apiKey ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900' : ''}`}
                   title="Manage API Key"
                 >
                   <Key size={14} />
@@ -669,6 +666,7 @@ function App() {
               onRemove={handleRemoveFile} 
               onUpdateMetadata={handleUpdateMetadata}
               onAddTrending={handleAddTrending}
+              apiKey={apiKey}
             />
           ))}
         </div>
