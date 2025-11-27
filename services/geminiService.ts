@@ -7,7 +7,7 @@ const metadataSchema: Schema = {
   properties: {
     title: {
       type: Type.STRING,
-      description: "A concise, SEO-friendly title for the stock image (max 70 chars).",
+      description: "A descriptive, SEO-friendly title for the stock image (55-150 characters).",
     },
     description: {
       type: Type.STRING,
@@ -16,7 +16,7 @@ const metadataSchema: Schema = {
     keywords: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "A list of 40-50 relevant keywords/tags ordered by relevance.",
+      description: "A list of 35-49 relevant keywords/tags ordered by relevance.",
     },
     category: {
       type: Type.STRING,
@@ -44,9 +44,9 @@ export const generateImageMetadata = async (
       Analyze the uploaded image visually.
       
       Generate metadata that maximizes SEO potential.
-      1. Title: Catchy, relevant, under 70 characters.
+      1. Title: Catchy, descriptive, and relevant. MUST be between 55 and 150 characters in length.
       2. Description: Detailed, natural language, under 200 characters. Includes subject, action, and setting.
-      3. Keywords: Provide 40-50 keywords. Include conceptual tags (e.g., "success", "freedom") and literal tags (e.g., "blue sky", "laptop").
+      3. Keywords: Provide 35-49 keywords. Include conceptual tags (e.g., "success", "freedom") and literal tags (e.g., "blue sky", "laptop").
       4. Category: Choose the single best standard category.
       
       Ensure the output is strict JSON.

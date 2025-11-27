@@ -8,7 +8,7 @@ export enum ProcessingStatus {
 
 export enum ModelMode {
   QUALITY = 'QUALITY', // gemini-3-pro-preview
-  FAST = 'FAST'        // gemini-2.5-flash-lite-latest
+  FAST = 'FAST'        // gemini-flash-lite-latest
 }
 
 export interface StockMetadata {
@@ -21,6 +21,7 @@ export interface StockMetadata {
 export interface UploadedFile {
   id: string;
   file: File;
+  vectorFile?: File; // Optional linked vector file (EPS/AI)
   previewUrl: string;
   status: ProcessingStatus;
   metadata?: StockMetadata;
