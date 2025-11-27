@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, TrendingUp, RefreshCw, X, AlertCircle, Cloud, Loader2, FileType, Sparkles, Trash2 } from 'lucide-react';
+import { Copy, Check, TrendingUp, RefreshCw, X, AlertCircle, Cloud, Loader2, FileType, Sparkles, Trash2, FilterX } from 'lucide-react';
 import { UploadedFile, StockMetadata, ProcessingStatus } from '../types';
 import { getTrendingKeywords } from '../services/geminiService';
 
@@ -157,18 +157,30 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
       handleImmediateUpdate({ ...localMetadata, keywords: newKw });
   }
 
+  const handleRemoveDuplicates = () => {
+    if (!localMetadata) return;
+    // Set preserves insertion order of the first occurrence
+    const uniqueKeywords = [...new Set(localMetadata.keywords)];
+    if (uniqueKeywords.length !== localMetadata.keywords.length) {
+        handleImmediateUpdate({ ...localMetadata, keywords: uniqueKeywords });
+    }
+  };
+
   const isProcessing = item.status === ProcessingStatus.ANALYZING || item.status === ProcessingStatus.UPLOADING;
 
   // Limits
   const TITLE_MIN = 55;
   const TITLE_MAX = 150;
   const DESC_MIN = 100;
-  const DESC_MAX = 180;
+  const DESC_MAX = 200;
   const KEYWORD_MIN = 35;
   const KEYWORD_MAX = 49;
 
   // Use localMetadata for rendering if available, fallback to item.metadata
   const displayMetadata = localMetadata || item.metadata;
+  
+  // Check for duplicates
+  const hasDuplicates = displayMetadata ? new Set(displayMetadata.keywords).size !== displayMetadata.keywords.length : false;
 
   return (
     <div 
@@ -301,9 +313,9 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                  <div className="flex items-center gap-2">
                    <span className={`text-[10px] ${
                        displayMetadata.description.length < DESC_MIN || displayMetadata.description.length > DESC_MAX
-                       ? 'text-red-500 font-bold' 
+                       ? 'text-red-500 font-bold'
                        : 'text-emerald-500'
-                    }`}>
+                   }`}>
                        {displayMetadata.description.length} / {DESC_MAX} chars (Min {DESC_MIN})
                    </span>
                    <button onClick={() => copyToClipboard(displayMetadata.description, 'description')} className="text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
@@ -315,12 +327,11 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                 value={displayMetadata.description}
                 onChange={(e) => handleLocalChange('description', e.target.value)}
                 onBlur={handleBlur}
-                rows={2}
-                maxLength={DESC_MAX}
-                className={`w-full p-2.5 text-sm text-slate-700 dark:text-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none ${
+                rows={3}
+                className={`w-full p-2.5 text-sm text-slate-700 dark:text-slate-300 rounded-lg border focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none ${
                     displayMetadata.description.length < DESC_MIN || displayMetadata.description.length > DESC_MAX
-                    ? 'border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/10'
-                    : 'border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
+                    ? 'border-red-300 dark:border-red-800 focus:border-red-500 bg-red-50 dark:bg-red-900/10'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
                 }`}
               />
             </div>
@@ -349,6 +360,19 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                     {isSearchingTrends ? <Loader2 size={10} className="animate-spin" /> : <TrendingUp size={10} />}
                     Find Trends
                   </button>
+
+                  {/* Dedupe Button */}
+                  {hasDuplicates && (
+                    <button 
+                        onClick={handleRemoveDuplicates}
+                        className="flex items-center gap-1 text-[10px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-2 py-1 rounded hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+                        title="Remove duplicate keywords"
+                    >
+                        <FilterX size={10} />
+                        Dedupe
+                    </button>
+                  )}
+
                   <button onClick={() => copyToClipboard(displayMetadata.keywords.join(', '), 'keywords')} className="text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
                     {copiedField === 'keywords' ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                   </button>

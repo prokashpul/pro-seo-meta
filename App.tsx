@@ -4,7 +4,7 @@ import { generateImageMetadata, getTrendingKeywords } from './services/geminiSer
 import { optimizeImage } from './services/imageOptimizer';
 import { FileUploader } from './components/FileUploader';
 import { MetadataCard } from './components/MetadataCard';
-import { BulkKeywordModal, BulkActionType } from './components/BulkKeywordModal';
+import { BulkKeywordModal, BulkActionType, BulkTargetField } from './components/BulkKeywordModal';
 import { Login } from './components/Login';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut } from 'lucide-react';
@@ -354,35 +354,69 @@ function App() {
     }
   };
 
-  const handleBulkApply = (action: BulkActionType, keywords: string[]) => {
+  const handleBulkApply = (action: BulkActionType, value: any, field: BulkTargetField) => {
     setFiles(prev => prev.map(file => {
       if (!selectedIds.has(file.id) || !file.metadata) return file;
 
-      let newKeywords = [...file.metadata.keywords];
-      
-      if (action === 'ADD') {
-        const existing = new Set(newKeywords.map(k => k.toLowerCase()));
-        keywords.forEach(k => {
-          if (!existing.has(k.toLowerCase())) {
-            newKeywords.push(k);
+      if (field === 'keywords') {
+          const keywords = value as string[];
+          let newKeywords = [...file.metadata.keywords];
+          
+          if (action === 'ADD') {
+            const existing = new Set(newKeywords.map(k => k.toLowerCase()));
+            keywords.forEach(k => {
+              if (!existing.has(k.toLowerCase())) {
+                newKeywords.push(k);
+              }
+            });
+          } else if (action === 'REMOVE') {
+            const toRemove = new Set(keywords.map(k => k.toLowerCase()));
+            newKeywords = newKeywords.filter(k => !toRemove.has(k.toLowerCase()));
+          } else if (action === 'REPLACE_ALL') {
+            newKeywords = [...keywords];
+          } else if (action === 'CLEAR_ALL') {
+            newKeywords = [];
           }
-        });
-      } else if (action === 'REMOVE') {
-        const toRemove = new Set(keywords.map(k => k.toLowerCase()));
-        newKeywords = newKeywords.filter(k => !toRemove.has(k.toLowerCase()));
-      } else if (action === 'REPLACE_ALL') {
-        newKeywords = [...keywords];
-      } else if (action === 'CLEAR_ALL') {
-        newKeywords = [];
-      }
 
-      return {
-        ...file,
-        metadata: {
-          ...file.metadata,
-          keywords: newKeywords
-        }
-      };
+          return {
+            ...file,
+            metadata: {
+              ...file.metadata,
+              keywords: newKeywords
+            }
+          };
+      } else if (field === 'title') {
+          const text = value as string;
+          let newTitle = file.metadata.title;
+          
+          if (action === 'REPLACE_ALL') {
+              newTitle = text;
+          } else if (action === 'APPEND') {
+              newTitle = `${newTitle} ${text}`.trim();
+          } else if (action === 'PREPEND') {
+              newTitle = `${text} ${newTitle}`.trim();
+          } else if (action === 'REMOVE') {
+              // Case insensitive, global replacement logic for "Remove Text"
+              if (text) {
+                  // Escape special characters in user input to use in RegExp
+                  const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  const regex = new RegExp(escapedText, 'gi');
+                  newTitle = newTitle.replace(regex, '');
+                  // Clean up extra whitespace left behind
+                  newTitle = newTitle.replace(/\s+/g, ' ').trim();
+              }
+          }
+          
+          return {
+            ...file,
+            metadata: {
+              ...file.metadata,
+              title: newTitle.substring(0, 150) // Enforce max length safety
+            }
+          };
+      }
+      
+      return file;
     }));
   };
 
