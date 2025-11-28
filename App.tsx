@@ -315,26 +315,37 @@ function App() {
         const imageFilename = `${finalBase}.${originalExt}`;
         usedFilenames.add(imageFilename);
 
-        // 1. Add Image
+        // 1. Add Image to ZIP
         zip.file(imageFilename, f.file);
 
-        // 2. Add Vector (if exists) - Use the same base name so they stay paired
-        if (f.vectorFile) {
-            const vectorExt = f.vectorFile.name.split('.').pop() || 'eps';
-            const vectorFilename = `${finalBase}.${vectorExt}`;
-            zip.file(vectorFilename, f.vectorFile);
-        }
-
-        // 3. Add row to CSV
         const escape = (str: string) => `"${str.replace(/"/g, '""')}"`;
-        const row = [
+
+        // 2. Add Image Row to CSV
+        csvRows.push([
           escape(imageFilename),
           escape(m.title),
           escape(m.description),
           escape(m.keywords.join(', ')),
           escape(m.category)
-        ];
-        csvRows.push(row);
+        ]);
+
+        // 3. Handle Vector (if exists) - Add to ZIP and Add separate CSV row
+        if (f.vectorFile) {
+            const vectorExt = f.vectorFile.name.split('.').pop() || 'eps';
+            const vectorFilename = `${finalBase}.${vectorExt}`;
+            
+            // Add Vector to Zip
+            zip.file(vectorFilename, f.vectorFile);
+
+            // Add Vector Row to CSV
+            csvRows.push([
+              escape(vectorFilename),
+              escape(m.title),
+              escape(m.description),
+              escape(m.keywords.join(', ')),
+              escape(m.category)
+            ]);
+        }
       });
 
       // Add CSV to zip
