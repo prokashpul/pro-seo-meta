@@ -1,6 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { Sparkles, Download, Trash2, ArrowLeft, Image as ImageIcon, Loader2, Plus, FileText, XCircle, Zap } from 'lucide-react';
+
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, Download, Trash2, ArrowLeft, Image as ImageIcon, Loader2, Plus, FileText, XCircle, Zap, ImagePlus, Wand2, Settings2, RefreshCw } from 'lucide-react';
 import { generateImageFromText } from '../services/geminiService';
+import { optimizeImage } from '../services/imageOptimizer';
 import { ImageGenItem } from '../types';
 import JSZip from 'jszip';
 
@@ -9,37 +12,106 @@ interface ImageGeneratorProps {
   onBack?: () => void;
 }
 
+type GenMode = 'GENERATE' | 'EDIT';
+
 export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }) => {
   const [items, setItems] = useState<ImageGenItem[]>([]);
   const [promptInput, setPromptInput] = useState('');
-  const [selectedRatio, setSelectedRatio] = useState('1:1');
+  const [imageCount, setImageCount] = useState(1);
+  const [mode, setMode] = useState<GenMode>('GENERATE');
   
+  // Advanced Settings State
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [negativePrompt, setNegativePrompt] = useState('');
+  const [guidanceScale, setGuidanceScale] = useState(7);
+  const [seed, setSeed] = useState<string>('');
+
+  // Edit Mode State
+  const [editSourceImage, setEditSourceImage] = useState<{file: File, previewUrl: string} | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageUploadRef = useRef<HTMLInputElement>(null);
   const [isProcessingAll, setIsProcessingAll] = useState(false);
   const stopRequestedRef = useRef(false);
 
   // Hardcoded Flash 2.5 Model
   const MODEL_ID = 'gemini-2.5-flash-image';
 
-  const aspectRatios = [
-    { label: 'Square (1:1)', value: '1:1' },
-    { label: 'Landscape (16:9)', value: '16:9' },
-    { label: 'Portrait (9:16)', value: '9:16' },
-    { label: 'Standard (4:3)', value: '4:3' },
-    { label: 'Vertical (3:4)', value: '3:4' },
-  ];
+  // Load Settings from LocalStorage
+  useEffect(() => {
+    const savedNeg = localStorage.getItem('imgGen_negativePrompt');
+    const savedScale = localStorage.getItem('imgGen_guidanceScale');
+    const savedSeed = localStorage.getItem('imgGen_seed');
 
-  const handleAddPrompt = () => {
+    if (savedNeg) setNegativePrompt(savedNeg);
+    if (savedScale) setGuidanceScale(Number(savedScale));
+    if (savedSeed) setSeed(savedSeed);
+  }, []);
+
+  // Save Settings to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('imgGen_negativePrompt', negativePrompt);
+    localStorage.setItem('imgGen_guidanceScale', String(guidanceScale));
+    localStorage.setItem('imgGen_seed', seed);
+  }, [negativePrompt, guidanceScale, seed]);
+
+  const handleSourceImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          setEditSourceImage({
+              file,
+              previewUrl: URL.createObjectURL(file)
+          });
+      }
+  };
+
+  const handleAddPrompt = async () => {
     if (!promptInput.trim()) return;
     
-    const newItem: ImageGenItem = {
-      id: Math.random().toString(36).substring(7),
-      prompt: promptInput.trim(),
-      aspectRatio: selectedRatio,
-      status: 'idle'
-    };
+    let sourceImageData = undefined;
+
+    if (mode === 'EDIT' && editSourceImage) {
+        try {
+            const { base64, mimeType } = await optimizeImage(editSourceImage.file);
+            sourceImageData = {
+                base64,
+                mimeType,
+                previewUrl: editSourceImage.previewUrl
+            };
+        } catch (e) {
+            console.error("Failed to process source image", e);
+            alert("Failed to process source image. Please try another file.");
+            return;
+        }
+    } else if (mode === 'EDIT' && !editSourceImage) {
+        alert("Please upload an image to edit.");
+        return;
+    }
     
-    setItems(prev => [newItem, ...prev]); // Add to top
+    const newItems: ImageGenItem[] = [];
+    const seedNum = seed ? parseInt(seed) : undefined;
+
+    // Create multiple items based on imageCount
+    for (let i = 0; i < imageCount; i++) {
+        // If specific seed set, increment it for duplicates to avoid exact same image if user requested > 1
+        // If random (undefined), keep it undefined
+        const currentSeed = seedNum !== undefined ? seedNum + i : undefined;
+
+        newItems.push({
+            id: Math.random().toString(36).substring(7),
+            prompt: promptInput.trim(),
+            aspectRatio: '1:1', // Defaulting to 1:1
+            status: 'idle',
+            sourceImage: sourceImageData,
+            advancedSettings: {
+                negativePrompt: negativePrompt.trim(),
+                guidanceScale,
+                seed: currentSeed
+            }
+        });
+    }
+    
+    setItems(prev => [...newItems, ...prev]); 
     setPromptInput('');
   };
 
@@ -54,26 +126,50 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (mode === 'EDIT' && !editSourceImage) {
+        alert("Please upload a source image first to apply edits from CSV.");
+        e.target.value = '';
+        return;
+    }
+
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const text = event.target?.result as string;
       if (!text) return;
 
       const lines = text.split(/\r?\n/);
       const newItems: ImageGenItem[] = [];
+      
+      let sourceImageData: any = undefined;
+      if (mode === 'EDIT' && editSourceImage) {
+          const { base64, mimeType } = await optimizeImage(editSourceImage.file);
+          sourceImageData = { base64, mimeType, previewUrl: editSourceImage.previewUrl };
+      }
+
+      const seedNum = seed ? parseInt(seed) : undefined;
 
       lines.forEach(line => {
         let prompt = line.trim();
         if (prompt.startsWith('"') && prompt.endsWith('"')) {
           prompt = prompt.substring(1, prompt.length - 1);
         }
+        
         if (prompt && prompt.toLowerCase() !== 'prompt') {
-            newItems.push({
-                id: Math.random().toString(36).substring(7),
-                prompt,
-                aspectRatio: selectedRatio,
-                status: 'idle'
-            });
+            for (let i = 0; i < imageCount; i++) {
+                const currentSeed = seedNum !== undefined ? seedNum + i : undefined;
+                newItems.push({
+                    id: Math.random().toString(36).substring(7),
+                    prompt,
+                    aspectRatio: '1:1',
+                    status: 'idle',
+                    sourceImage: sourceImageData,
+                    advancedSettings: {
+                        negativePrompt: negativePrompt.trim(),
+                        guidanceScale,
+                        seed: currentSeed
+                    }
+                });
+            }
         }
       });
       
@@ -103,7 +199,14 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
       const item = items.find(i => i.id === id);
       if (!item) return;
 
-      const imageUrl = await generateImageFromText(item.prompt, item.aspectRatio, MODEL_ID, apiKey);
+      const imageUrl = await generateImageFromText(
+          item.prompt, 
+          item.aspectRatio, 
+          MODEL_ID, 
+          apiKey,
+          item.sourceImage,
+          item.advancedSettings
+      );
 
       setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'completed', generatedImageUrl: imageUrl } : i));
     } catch (err: any) {
@@ -127,7 +230,6 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
     
     const pending = items.filter(i => i.status === 'idle' || i.status === 'error');
     
-    // Process strictly sequentially (Batch size 1) to avoid hitting RPM limits.
     const BATCH_SIZE = 1;
     for (let i = 0; i < pending.length; i += BATCH_SIZE) {
         if (stopRequestedRef.current) {
@@ -137,8 +239,6 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
         const batch = pending.slice(i, i + BATCH_SIZE);
         await Promise.all(batch.map(item => generateSingle(item.id)));
         
-        // Artificial delay between items to help with RPM limits on the client side
-        // Increased to 20 seconds to be extremely safe with Free Tier Image Gen Limits
         if (i + BATCH_SIZE < pending.length && !stopRequestedRef.current) {
              await new Promise(resolve => setTimeout(resolve, 20000));
         }
@@ -167,7 +267,8 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
           if (item.generatedImageUrl) {
               const base64Data = item.generatedImageUrl.split(',')[1];
               const safePrompt = item.prompt.substring(0, 30).replace(/[^a-z0-9]/gi, '_');
-              const filename = `${safePrompt}_${index}.png`;
+              const suffix = item.sourceImage ? '_edit' : '';
+              const filename = `${safePrompt}${suffix}_${index}.png`;
               zip.file(filename, base64Data, { base64: true });
           }
       });
@@ -203,42 +304,184 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
 
       <div className="text-center mb-10">
         <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-500">
-          Text to Image Generator
+          AI Image Lab
         </h2>
         <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-400 text-lg">
-          Generate high-quality AI images from text prompts using the fast <strong>Flash 2.5</strong> model.
+          Generate or Edit images using the fast <strong>Flash 2.5</strong> model.
         </p>
       </div>
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-8">
+        
+        {/* Mode Toggle */}
+        <div className="flex justify-center mb-6">
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                <button
+                    onClick={() => { setMode('GENERATE'); setEditSourceImage(null); }}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                        mode === 'GENERATE' 
+                        ? 'bg-emerald-600 text-white shadow-sm' 
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                >
+                    <ImagePlus size={16} /> Generate (Text-to-Image)
+                </button>
+                <button
+                    onClick={() => setMode('EDIT')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                        mode === 'EDIT' 
+                        ? 'bg-indigo-600 text-white shadow-sm' 
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                >
+                    <Wand2 size={16} /> Edit (Image-to-Image)
+                </button>
+            </div>
+        </div>
+
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
+             {/* Source Image Uploader for Edit Mode */}
+             {mode === 'EDIT' && (
+                 <div className="mb-4">
+                     <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
+                        Reference Image (Required)
+                     </label>
+                     <input 
+                        type="file"
+                        ref={imageUploadRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleSourceImageSelect}
+                     />
+                     <div 
+                        onClick={() => imageUploadRef.current?.click()}
+                        className={`border-2 border-dashed rounded-lg p-4 flex items-center justify-center gap-4 cursor-pointer transition-colors ${
+                            editSourceImage 
+                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' 
+                            : 'border-slate-300 dark:border-slate-700 hover:border-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                     >
+                        {editSourceImage ? (
+                            <>
+                                <img src={editSourceImage.previewUrl} alt="Source" className="h-16 w-16 object-cover rounded shadow-sm" />
+                                <div className="text-left">
+                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate max-w-[200px]">{editSourceImage.file.name}</p>
+                                    <p className="text-xs text-indigo-500">Click to change</p>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center py-2 text-slate-400">
+                                <ImageIcon size={24} className="mb-1" />
+                                <p className="text-sm">Click to upload image</p>
+                            </div>
+                        )}
+                     </div>
+                 </div>
+             )}
+
             <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
-              Enter Prompt
+              {mode === 'EDIT' ? 'Edit Instructions' : 'Prompt'}
             </label>
             <textarea
               value={promptInput}
               onChange={(e) => setPromptInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none h-24"
-              placeholder="Describe the image you want to generate..."
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none h-32 placeholder-slate-400"
+              placeholder={mode === 'EDIT' ? "e.g., 'Add a retro filter', 'Make it snowing', 'Change background to beach'..." : "Describe the image you want to generate..."}
             />
+            
+            {/* Advanced Settings Toggle */}
+             <div className="mt-4">
+               <button 
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors"
+               >
+                  <Settings2 size={14} />
+                  {showAdvanced ? 'Hide Advanced Settings' : 'Show Advanced Settings'}
+               </button>
+               
+               {showAdvanced && (
+                 <div className="mt-3 p-4 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 animate-in fade-in slide-in-from-top-2">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
+                                Negative Prompt (Exclude)
+                            </label>
+                            <input 
+                                value={negativePrompt}
+                                onChange={(e) => setNegativePrompt(e.target.value)}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                                placeholder="blurry, bad quality, low resolution, watermark..."
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400 flex justify-between">
+                                    <span>Guidance Scale</span>
+                                    <span className="text-emerald-500">{guidanceScale}</span>
+                                </label>
+                                <input 
+                                    type="range"
+                                    min="1"
+                                    max="20"
+                                    step="0.5"
+                                    value={guidanceScale}
+                                    onChange={(e) => setGuidanceScale(parseFloat(e.target.value))}
+                                    className="w-full accent-emerald-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                                    Seed
+                                    <button 
+                                        onClick={() => setSeed(String(Math.floor(Math.random() * 10000000)))}
+                                        className="text-[10px] text-emerald-500 hover:underline flex items-center gap-1"
+                                        title="Randomize"
+                                    >
+                                        <RefreshCw size={10} /> Random
+                                    </button>
+                                </label>
+                                <input 
+                                    type="number"
+                                    value={seed}
+                                    onChange={(e) => setSeed(e.target.value)}
+                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                                    placeholder="Random if empty"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+               )}
+             </div>
+
           </div>
           
           <div className="md:w-64 flex flex-col gap-4">
+            
+            {/* Aspect Ratio System Removed */}
+
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
-                Aspect Ratio
+                Number of Images
               </label>
-              <select
-                value={selectedRatio}
-                onChange={(e) => setSelectedRatio(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2.5 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm"
-              >
-                {aspectRatios.map(r => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
-              </select>
+              <div className="flex gap-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-1">
+                 {[1, 2, 3, 4].map(num => (
+                    <button
+                        key={num}
+                        onClick={() => setImageCount(num)}
+                        className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${
+                            imageCount === num 
+                            ? 'bg-white dark:bg-slate-800 text-emerald-600 shadow-sm' 
+                            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                        }`}
+                    >
+                        {num}
+                    </button>
+                 ))}
+              </div>
             </div>
 
             <div>
@@ -253,7 +496,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
             
             <button
               onClick={handleAddPrompt}
-              disabled={!promptInput.trim()}
+              disabled={!promptInput.trim() || (mode === 'EDIT' && !editSourceImage)}
               className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
             >
               <Plus size={18} />
@@ -278,11 +521,11 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
                 <FileText size={16} />
                 Upload CSV
              </button>
-             <span className="text-xs text-slate-400">Bulk upload prompts</span>
+             <span className="text-xs text-slate-400">Bulk upload prompts {mode === 'EDIT' && '(Applied to Reference Image)'}</span>
            </div>
            
            <div className="text-xs text-slate-400">
-             {items.length} prompts queued
+             {items.length} images queued
            </div>
         </div>
       </div>
@@ -342,12 +585,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
         {items.map(item => (
           <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col">
              
-             <div className={`relative bg-slate-100 dark:bg-slate-950 flex items-center justify-center group ${
-                 item.aspectRatio === '16:9' ? 'aspect-video' : 
-                 item.aspectRatio === '9:16' ? 'aspect-[9/16]' : 
-                 item.aspectRatio === '4:3' ? 'aspect-[4/3]' : 
-                 item.aspectRatio === '3:4' ? 'aspect-[3/4]' : 'aspect-square'
-             }`}>
+             <div className="relative bg-slate-100 dark:bg-slate-950 flex items-center justify-center group aspect-square">
                 
                 {item.generatedImageUrl ? (
                     <>
@@ -385,6 +623,13 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
                         )}
                     </div>
                 )}
+
+                {/* Badge for Edit Mode items */}
+                {item.sourceImage && (
+                    <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-indigo-500/90 text-white text-[10px] font-bold rounded shadow-sm z-10 pointer-events-none">
+                        EDIT
+                    </div>
+                )}
                 
                 <button 
                     onClick={() => handleRemove(item.id)}
@@ -395,13 +640,37 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ apiKey, onBack }
              </div>
 
              <div className="p-4 flex flex-col flex-1">
-                <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-3 mb-3 flex-1">
-                   {item.prompt}
-                </p>
+                <div className="flex gap-2 mb-3 flex-1">
+                    {item.sourceImage && (
+                        <img 
+                           src={item.sourceImage.previewUrl} 
+                           alt="Source" 
+                           className="w-10 h-10 object-cover rounded border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                           title="Reference Image"
+                        />
+                    )}
+                    <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-3">
+                        {item.prompt}
+                    </p>
+                </div>
+                
+                {/* Advanced Settings Badge */}
+                {item.advancedSettings && (item.advancedSettings.negativePrompt || item.advancedSettings.seed) && (
+                    <div className="mb-2 flex flex-wrap gap-1">
+                        {item.advancedSettings.seed && (
+                            <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                                Seed: {item.advancedSettings.seed}
+                            </span>
+                        )}
+                        {item.advancedSettings.negativePrompt && (
+                            <span className="text-[10px] bg-red-50 dark:bg-red-900/10 text-red-500 px-1.5 py-0.5 rounded border border-red-100 dark:border-red-900/20 max-w-full truncate">
+                                No: {item.advancedSettings.negativePrompt}
+                            </span>
+                        )}
+                    </div>
+                )}
+                
                 <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-auto pt-3 border-t border-slate-100 dark:border-slate-800">
-                   <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                     {item.aspectRatio}
-                   </span>
                    
                    {item.status === 'error' && (
                        <span className="text-red-500 truncate max-w-[120px]" title={item.error}>

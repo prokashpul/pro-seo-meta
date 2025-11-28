@@ -720,7 +720,7 @@ function App() {
                         onClick={() => handleNavClick('about')}
                         className={`w-full p-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 ${
                               view === 'about'
-                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400'
+                                ? 'bg-indigo-5 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400'
                                 : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                         }`}
                     >

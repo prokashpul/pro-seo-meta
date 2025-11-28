@@ -41,6 +41,16 @@ export interface ImageGenItem {
   prompt: string;
   aspectRatio: string;
   status: 'idle' | 'generating' | 'completed' | 'error';
-  generatedImageUrl?: string;
   error?: string;
+  generatedImageUrl?: string;
+  sourceImage?: {
+    base64: string;
+    mimeType: string;
+    previewUrl: string;
+  };
+  advancedSettings?: {
+    negativePrompt?: string;
+    guidanceScale?: number;
+    seed?: number;
+  };
 }
