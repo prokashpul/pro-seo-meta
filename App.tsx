@@ -9,7 +9,7 @@ import { Login } from './components/Login';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { About } from './components/About';
 import { PromptGenerator } from './components/PromptGenerator';
-import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon } from 'lucide-react';
+import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X } from 'lucide-react';
 import JSZip from 'jszip';
 
 const MAX_PARALLEL_UPLOADS = 3;
@@ -26,24 +26,40 @@ function App() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [renameOnExport, setRenameOnExport] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  
+  // Initialize Dark Mode from Local Storage
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('stockmeta_theme');
+    // Default to true (dark) if no preference found
+    return savedTheme ? savedTheme === 'dark' : true;
+  });
+  
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [view, setView] = useState<'generator' | 'prompts' | 'about'>('generator');
 
-  // Theme Toggle Effect
+  // Theme Toggle Effect & Persistence
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
+      localStorage.setItem('stockmeta_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
+      localStorage.setItem('stockmeta_theme', 'light');
     }
   }, [isDarkMode]);
 
-  // Load API Key from local storage
+  // Load API Key from local storage & Auto-login if key exists
   useEffect(() => {
     const storedKey = localStorage.getItem('gemini_api_key');
     if (storedKey) {
       setApiKey(storedKey);
+      // Auto-login to bypass welcome screen
+      setUser({
+        name: 'StockMeta User',
+        email: 'user@example.com',
+        avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
+      });
     }
   }, []);
 
@@ -69,11 +85,22 @@ function App() {
     setUser(null);
     setFiles([]);
     setSelectedIds(new Set());
+    // Optional: Clear key on logout if desired, currently preserving it so refresh logs back in
+    // localStorage.removeItem('gemini_api_key'); 
+    // setApiKey('');
   };
 
   const handleSaveApiKey = (key: string) => {
       setApiKey(key);
       localStorage.setItem('gemini_api_key', key);
+      // Ensure user is logged in if they save the key
+      if (!user) {
+          setUser({
+            name: 'StockMeta User',
+            email: 'user@example.com',
+            avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
+          });
+      }
   };
   
   const processFile = async (fileObj: UploadedFile) => {
@@ -432,6 +459,11 @@ function App() {
     }));
   };
 
+  const handleNavClick = (newView: 'generator' | 'prompts' | 'about') => {
+      setView(newView);
+      setIsMobileMenuOpen(false);
+  }
+
   if (!user) {
     return (
       <Login 
@@ -469,7 +501,7 @@ function App() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div 
             className="flex items-center gap-2 cursor-pointer group"
-            onClick={() => setView('generator')}
+            onClick={() => handleNavClick('generator')}
           >
             <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-lg group-hover:shadow-lg transition-all">
               <Layers className="text-white w-6 h-6" />
@@ -478,13 +510,14 @@ function App() {
               <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
                 StockMeta AI
               </h1>
-              <p className={`text-[10px] font-medium tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-[10px] font-medium tracking-wider hidden sm:block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 ADOBE STOCK & SHUTTERSTOCK OPTIMIZED
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-4">
              
              {/* Home Button (Visible when not on Home) */}
              {view !== 'generator' && (
@@ -498,11 +531,11 @@ function App() {
                     title="Back to Generator"
                   >
                     <Home size={14} />
-                    <span className="hidden lg:inline">Home</span>
+                    <span>Home</span>
                   </button>
              )}
 
-             {/* Prompts Button (New) */}
+             {/* Prompts Button */}
              <button
                 onClick={() => setView('prompts')}
                 className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
@@ -515,10 +548,10 @@ function App() {
                 title="Prompts Generate"
               >
                 <ImageIcon size={14} />
-                <span className="hidden lg:inline">Prompts Generate</span>
+                <span>Prompts</span>
               </button>
 
-             {/* About Button (Header) */}
+             {/* About Button */}
              <button
                 onClick={() => setView('about')}
                 className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
@@ -531,12 +564,12 @@ function App() {
                 title="About"
               >
                 <Info size={14} />
-                <span className="hidden lg:inline">About</span>
+                <span>About</span>
               </button>
 
             {/* Mode Switcher - Only on Generator view */}
             {view === 'generator' && (
-              <div className={`hidden sm:flex p-1 rounded-lg items-center border transition-colors ${
+              <div className={`flex p-1 rounded-lg items-center border transition-colors ${
                 isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
               }`}>
                 <button
@@ -548,7 +581,7 @@ function App() {
                   }`}
                 >
                   <Zap size={14} />
-                  Fast Mode
+                  Fast
                 </button>
                 <button
                   onClick={() => setModelMode(ModelMode.QUALITY)}
@@ -559,14 +592,12 @@ function App() {
                   }`}
                 >
                   <Aperture size={14} />
-                  Pro Analysis
+                  Pro
                 </button>
               </div>
             )}
 
-            {view === 'generator' && (
-                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
-            )}
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
 
             {/* API Key & User Profile */}
             <div className="flex items-center gap-3">
@@ -581,7 +612,6 @@ function App() {
                   title="Manage API Key"
                 >
                   <Key size={14} />
-                  <span className="hidden sm:inline">API Key</span>
                 </button>
 
                 <div className="relative group">
@@ -593,7 +623,6 @@ function App() {
                    
                    {/* Dropdown / Sign Out */}
                    <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-lg rounded-lg overflow-hidden hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-2">
-                       {/* User Info Section */}
                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate" title={user.name}>{user.name}</p>
                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate" title={user.email}>{user.email}</p>
@@ -610,7 +639,7 @@ function App() {
                 </div>
             </div>
 
-            {/* Theme Toggle (Moved to end) */}
+            {/* Theme Toggle */}
              <button
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 className={`p-2 rounded-full transition-colors ${
@@ -624,7 +653,125 @@ function App() {
               </button>
 
           </div>
+          
+          {/* Mobile Menu Button */}
+          <div className="md:hidden flex items-center gap-3">
+             <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`p-2 rounded-lg transition-colors ${
+                  isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
+             >
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+             </button>
+          </div>
         </div>
+
+        {/* Mobile Navigation Dropdown */}
+        {isMobileMenuOpen && (
+            <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl animate-in slide-in-from-top-2">
+                <div className="px-4 py-4 space-y-4">
+                    {/* User Info Mobile */}
+                    <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-700">
+                        <img 
+                            src={user.avatar} 
+                            alt={user.name}
+                            className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 object-cover" 
+                        />
+                        <div className="flex-1 overflow-hidden">
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{user.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                         <button
+                            onClick={() => handleNavClick('generator')}
+                            className={`p-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 ${
+                              view === 'generator'
+                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400'
+                                : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                            }`}
+                         >
+                            <Home size={16} /> Home
+                         </button>
+
+                         <button
+                            onClick={() => handleNavClick('prompts')}
+                            className={`p-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 ${
+                              view === 'prompts'
+                                ? 'bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800 text-pink-700 dark:text-pink-400'
+                                : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                            }`}
+                         >
+                            <ImageIcon size={16} /> Prompts
+                         </button>
+                    </div>
+                    
+                    <button
+                        onClick={() => handleNavClick('about')}
+                        className={`w-full p-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 ${
+                              view === 'about'
+                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400'
+                                : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                        }`}
+                    >
+                        <Info size={16} /> About StockMeta
+                    </button>
+
+                    {/* Mode Switcher Mobile */}
+                    {view === 'generator' && (
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                             <button
+                                onClick={() => { setModelMode(ModelMode.FAST); setIsMobileMenuOpen(false); }}
+                                className={`p-2 rounded-lg text-xs font-medium flex items-center justify-center gap-2 border ${
+                                    modelMode === ModelMode.FAST
+                                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                                    : 'bg-transparent border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                                }`}
+                             >
+                                <Zap size={14} /> Fast Mode
+                             </button>
+                             <button
+                                onClick={() => { setModelMode(ModelMode.QUALITY); setIsMobileMenuOpen(false); }}
+                                className={`p-2 rounded-lg text-xs font-medium flex items-center justify-center gap-2 border ${
+                                    modelMode === ModelMode.QUALITY
+                                    ? 'bg-purple-600 border-purple-600 text-white'
+                                    : 'bg-transparent border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                                }`}
+                             >
+                                <Aperture size={14} /> Pro Analysis
+                             </button>
+                        </div>
+                    )}
+
+                    <div className="border-t border-slate-100 dark:border-slate-700 pt-4 flex items-center justify-between">
+                         <button
+                            onClick={() => setIsDarkMode(!isDarkMode)}
+                            className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"
+                         >
+                            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                         </button>
+
+                         <button
+                            onClick={() => { setIsApiKeyModalOpen(true); setIsMobileMenuOpen(false); }}
+                            className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 font-medium"
+                         >
+                            <Key size={16} /> API Key
+                         </button>
+                    </div>
+
+                    <button 
+                         onClick={handleLogout} 
+                         className="w-full text-center py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center gap-2 rounded-lg"
+                    >
+                          <LogOut size={16} />
+                          Sign Out
+                    </button>
+                </div>
+            </div>
+        )}
       </header>
 
       {/* Main Content */}
@@ -641,7 +788,10 @@ function App() {
               <h2 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                 Generate Metadata
               </h2>
-              <p className={`max-w-2xl ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+              <p className={`max-w-2xl ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} block sm:hidden`}>
+                 Upload stock photography to generate optimized metadata.
+              </p>
+              <p className={`max-w-2xl ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} hidden sm:block`}>
                 Upload your stock photography to automatically generate optimized titles, descriptions, and keywords. 
                 Supports paired Vectors (EPS/AI) if matched by filename.
               </p>
@@ -654,7 +804,7 @@ function App() {
 
             {/* Actions Bar */}
             {files.length > 0 && (
-              <div className={`flex justify-between items-center mb-6 sticky top-20 z-40 backdrop-blur p-4 rounded-xl border shadow-xl transition-all ${
+              <div className={`flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 sticky top-20 z-40 backdrop-blur p-4 rounded-xl border shadow-xl transition-all ${
                 isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'
               }`}>
                 <div className="flex items-center gap-3">
@@ -675,7 +825,7 @@ function App() {
                       <span className={`font-medium text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                         {files.length} Asset{files.length !== 1 ? 's' : ''}
                       </span>
-                      <span className="w-px h-4 bg-slate-700"></span>
+                      <span className="hidden sm:inline w-px h-4 bg-slate-700"></span>
                       <span className="text-slate-500 text-xs flex items-center gap-1">
                         <div className={`w-2 h-2 rounded-full ${files.some(f => f.status === ProcessingStatus.ANALYZING) ? 'bg-indigo-500 animate-pulse' : 'bg-emerald-500'}`}></div>
                         {files.some(f => f.status === ProcessingStatus.ANALYZING) ? 'Processing...' : 'Ready'}
@@ -684,13 +834,13 @@ function App() {
                   )}
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   
                   {/* Generate Button (Primary Action) */}
                   {pendingFilesCount > 0 && (
                     <button 
                       onClick={handleGenerateAll}
-                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 animate-in zoom-in-95 font-semibold"
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 animate-in zoom-in-95 font-semibold w-full md:w-auto justify-center"
                     >
                       <Sparkles size={16} />
                       Generate Metadata ({pendingFilesCount})
@@ -723,7 +873,7 @@ function App() {
                     </button>
                   )}
 
-                  <div className="w-px h-4 bg-slate-700"></div>
+                  <div className="hidden sm:block w-px h-4 bg-slate-700"></div>
 
                   {/* Rename Toggle */}
                   <label className="flex items-center gap-2 cursor-pointer group px-2 select-none">
@@ -762,7 +912,7 @@ function App() {
                     {isExporting ? 'Zipping...' : 'Export ZIP'}
                   </button>
                   
-                  <div className="w-px h-4 bg-slate-700"></div>
+                  <div className="hidden sm:block w-px h-4 bg-slate-700"></div>
 
                   <button 
                     onClick={handleClearAll}
