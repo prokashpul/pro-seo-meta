@@ -51,9 +51,9 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
     if (completedItems.length === 0) return;
 
     // CSV Construction using Blob to handle special characters and newlines correctly
-    const headers = ['Filename', 'Prompt'];
+    // Only include the "Prompt" column as requested
+    const headers = ['Prompt'];
     const rows = completedItems.map(item => [
-      `"${item.file.name.replace(/"/g, '""')}"`, // Escape quotes
       `"${item.prompt.replace(/"/g, '""')}"`     // Escape quotes in prompt
     ]);
 

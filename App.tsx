@@ -85,9 +85,6 @@ function App() {
     setUser(null);
     setFiles([]);
     setSelectedIds(new Set());
-    // Optional: Clear key on logout if desired, currently preserving it so refresh logs back in
-    // localStorage.removeItem('gemini_api_key'); 
-    // setApiKey('');
   };
 
   const handleSaveApiKey = (key: string) => {
@@ -364,7 +361,12 @@ function App() {
     }
   };
 
-  // Bulk Selection Logic
+  const handleNavClick = (newView: 'generator' | 'prompts' | 'about') => {
+      setView(newView);
+      setIsMobileMenuOpen(false);
+  }
+
+  // Bulk Selection Logic and other methods...
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const newSet = new Set(prev);
@@ -458,11 +460,6 @@ function App() {
       return file;
     }));
   };
-
-  const handleNavClick = (newView: 'generator' | 'prompts' | 'about') => {
-      setView(newView);
-      setIsMobileMenuOpen(false);
-  }
 
   if (!user) {
     return (

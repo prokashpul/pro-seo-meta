@@ -35,3 +35,12 @@ export interface GenerationStats {
   success: number;
   failed: number;
 }
+
+export interface ImageGenItem {
+  id: string;
+  prompt: string;
+  aspectRatio: string;
+  status: 'idle' | 'generating' | 'completed' | 'error';
+  generatedImageUrl?: string;
+  error?: string;
+}

@@ -26,6 +26,27 @@ const metadataSchema: Schema = {
   required: ["title", "description", "keywords", "category"],
 };
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function calculateBackoff(errorMsg: string, attempt: number): number {
+  // Try to parse specific wait time from error message
+  // Example: "Please retry in 58.753408782s."
+  const match = errorMsg ? errorMsg.match(/retry in (\d+(\.\d+)?)s/) : null;
+  
+  // Add randomness (jitter) to prevent thundering herd problem
+  const jitter = Math.random() * 2000; 
+
+  if (match && match[1]) {
+    // Add 2s buffer + jitter to the requested wait time
+    const waitSeconds = parseFloat(match[1]);
+    return Math.ceil(waitSeconds * 1000) + 2000 + jitter;
+  }
+  
+  // Fallback to exponential backoff: 2s, 4s, 8s, 16s... + jitter
+  // Base 2s for attempt 1
+  return (Math.pow(2, attempt) * 2000) + jitter;
+}
+
 /**
  * Helper to handle retries and model fallbacks for resilience.
  */
@@ -33,13 +54,14 @@ async function generateWithRetry(
   ai: GoogleGenAI, 
   params: any, 
   isProMode: boolean, 
-  retries = 3
+  retries = 3,
+  attempt = 1
 ): Promise<any> {
   try {
     return await ai.models.generateContent(params);
   } catch (e: any) {
-    const msg = e.message || '';
-    const status = e.status;
+    const msg = e?.message || String(e);
+    const status = e?.status;
 
     // 1. Check for Invalid API Key
     if (msg.includes('API key not valid') || msg.includes('API_KEY_INVALID')) {
@@ -48,7 +70,7 @@ async function generateWithRetry(
 
     // Check for 429 (Quota Exceeded) or 503 (Service Unavailable)
     const isQuota = status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
-    const isServer = status >= 500;
+    const isServer = status >= 500 || msg.includes('503') || msg.includes('UNAVAILABLE');
     
     if ((isQuota || isServer) && retries > 0) {
         // STRATEGY: If Pro model hits quota, immediately fallback to Flash to avoid user wait time.
@@ -67,14 +89,15 @@ async function generateWithRetry(
             };
             
             // Recursive call with fallback params, setting isProMode to false so we don't fallback again unnecessarily
-            return generateWithRetry(ai, fallbackParams, false, retries - 1);
+            return generateWithRetry(ai, fallbackParams, false, retries - 1, attempt + 1);
         }
 
-        // For other errors or if already on fallback, use exponential backoff
-        const delay = Math.pow(2, 4 - retries) * 1000; // 2s, 4s, 8s
-        console.log(`API Error (${status}). Retrying in ${delay}ms...`);
-        await new Promise(r => setTimeout(r, delay));
-        return generateWithRetry(ai, params, isProMode, retries - 1);
+        // For other errors or if already on fallback, use smart backoff
+        const delayTime = calculateBackoff(msg, attempt);
+        console.log(`API Error (${status}). Retrying in ${delayTime}ms...`);
+        await wait(delayTime);
+        
+        return generateWithRetry(ai, params, isProMode, retries - 1, attempt + 1);
     }
     
     // If we run out of retries and it was a quota error
@@ -242,6 +265,54 @@ export const generateImagePrompt = async (
   } catch (error) {
     console.error("Error generating prompt:", error);
     // Rethrow logic handled by generateWithRetry or bubble up standard errors
+    const msg = (error as Error).message || '';
+    if (msg.includes("Invalid API Key")) throw new Error("Invalid API Key. Please update it.");
+    throw error;
+  }
+};
+
+/**
+ * Generates an image from a text prompt.
+ */
+export const generateImageFromText = async (
+  prompt: string,
+  aspectRatio: string,
+  model: string,
+  apiKey?: string
+): Promise<string> => {
+  try {
+    const key = apiKey || process.env.API_KEY;
+    if (!key) throw new Error("API Key is missing.");
+
+    const ai = new GoogleGenAI({ apiKey: key });
+
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: {
+        parts: [{ text: prompt }]
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: aspectRatio as any
+        }
+      }
+    });
+
+    if (response.candidates && response.candidates[0].content && response.candidates[0].content.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        // Find the image part, do not assume it is the first part.
+        if (part.inlineData) {
+          const base64EncodeString = part.inlineData.data;
+          const mimeType = part.inlineData.mimeType || 'image/png';
+          return `data:${mimeType};base64,${base64EncodeString}`;
+        }
+      }
+    }
+    
+    throw new Error("No image generated in response.");
+
+  } catch (error) {
+    console.error("Error generating image:", error);
     const msg = (error as Error).message || '';
     if (msg.includes("Invalid API Key")) throw new Error("Invalid API Key. Please update it.");
     throw error;
