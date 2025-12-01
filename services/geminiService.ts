@@ -285,6 +285,57 @@ export const generateImagePrompt = async (
 };
 
 /**
+ * Expands a short text concept into multiple detailed image generation prompts.
+ */
+export const expandTextToPrompts = async (
+  shortText: string,
+  count: number,
+  apiKey?: string,
+  imageType: string = "Photography"
+): Promise<string[]> => {
+  try {
+    const key = apiKey || process.env.API_KEY;
+    if (!key) throw new Error("API Key is missing.");
+
+    const ai = new GoogleGenAI({ apiKey: key });
+    const model = 'gemini-2.5-flash';
+
+    const prompt = `
+      Act as an expert prompt engineer for Midjourney v6 and Stable Diffusion.
+      Create ${count} distinct, highly detailed, and creative image generation prompts based on the following concept:
+      "${shortText}"
+
+      Target Style: ${imageType}
+
+      Each prompt should be high quality, specifying style details, lighting, camera settings, and atmosphere appropriate for ${imageType}.
+      
+      Output strictly a JSON array of strings. Example: ["Prompt 1...", "Prompt 2..."]
+    `;
+
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING }
+        }
+      }
+    });
+
+    if (!response.text) return [];
+    return JSON.parse(response.text) as string[];
+
+  } catch (error) {
+    console.error("Error expanding prompts:", error);
+    const msg = (error as Error).message || '';
+    if (msg.includes("Invalid API Key")) throw new Error("Invalid API Key. Please update it.");
+    throw error;
+  }
+};
+
+/**
  * Generates an image using the Gemini 2.5 Flash Image model.
  * Supports Text-to-Image and Image-to-Image (Editing).
  */
