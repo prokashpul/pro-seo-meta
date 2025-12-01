@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { UploadedFile, ProcessingStatus, ModelMode, StockMetadata } from './types';
 import { generateImageMetadata, getTrendingKeywords } from './services/geminiService';
@@ -9,7 +10,8 @@ import { Login } from './components/Login';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { About } from './components/About';
 import { PromptGenerator } from './components/PromptGenerator';
-import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X } from 'lucide-react';
+import { EventCalendar } from './components/EventCalendar';
+import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar } from 'lucide-react';
 import JSZip from 'jszip';
 
 const MAX_PARALLEL_UPLOADS = 3;
@@ -36,7 +38,7 @@ function App() {
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  const [view, setView] = useState<'generator' | 'prompts' | 'about'>('generator');
+  const [view, setView] = useState<'generator' | 'prompts' | 'about' | 'calendar'>('generator');
 
   // Theme Toggle Effect & Persistence
   useEffect(() => {
@@ -372,7 +374,7 @@ function App() {
     }
   };
 
-  const handleNavClick = (newView: 'generator' | 'prompts' | 'about') => {
+  const handleNavClick = (newView: 'generator' | 'prompts' | 'about' | 'calendar') => {
       setView(newView);
       setIsMobileMenuOpen(false);
   }
@@ -559,6 +561,22 @@ function App() {
                 <span>Prompts</span>
               </button>
 
+             {/* Calendar Button */}
+             <button
+                onClick={() => setView('calendar')}
+                className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
+                  view === 'calendar'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
+                      : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
+                }`}
+                title="Event Calendar"
+              >
+                <Calendar size={14} />
+                <span>Calendar</span>
+              </button>
+
              {/* About Button */}
              <button
                 onClick={() => setView('about')}
@@ -714,13 +732,24 @@ function App() {
                          >
                             <ImageIcon size={16} /> Prompts
                          </button>
+
+                         <button
+                            onClick={() => handleNavClick('calendar')}
+                            className={`p-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 ${
+                              view === 'calendar'
+                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400'
+                                : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                            }`}
+                         >
+                            <Calendar size={16} /> Calendar
+                         </button>
                     </div>
                     
                     <button
                         onClick={() => handleNavClick('about')}
                         className={`w-full p-3 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 ${
                               view === 'about'
-                                ? 'bg-indigo-5 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400'
+                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400'
                                 : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                         }`}
                     >
@@ -789,6 +818,8 @@ function App() {
           <About onBack={() => setView('generator')} />
         ) : view === 'prompts' ? (
           <PromptGenerator apiKey={apiKey} onBack={() => setView('generator')} />
+        ) : view === 'calendar' ? (
+          <EventCalendar onBack={() => setView('generator')} />
         ) : (
           <>
             {/* Intro / Stats */}

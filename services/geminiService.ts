@@ -128,9 +128,22 @@ export const generateImageMetadata = async (
     const primaryModel = mode === ModelMode.QUALITY ? 'gemini-3-pro-preview' : 'gemini-flash-lite-latest';
     const isPro = mode === ModelMode.QUALITY;
 
+    let pngInstructions = "";
+    if (mimeType === 'image/png') {
+        pngInstructions = `
+        CRITICAL INSTRUCTION FOR PNG IMAGES:
+        Visually check if this image has a transparent background or shows an object isolated on a transparent/white background.
+        IF DETECTED:
+        1. Title: MUST append the phrase "Isolated on Transparent Background" at the end of the title.
+        2. Description: MUST include the phrase "isolated on transparent background" within the description sentence.
+        3. Keywords: MUST include "isolated", "transparent", "background", "cutout", "png".
+        `;
+    }
+
     const prompt = `
       You are an expert stock photography contributor for Adobe Stock and Shutterstock.
       Analyze the uploaded image visually.
+      ${pngInstructions}
       
       Generate metadata that maximizes SEO potential following strict agency guidelines:
       1. Title: Catchy, descriptive, and relevant. MUST be between 55 and 150 characters.
