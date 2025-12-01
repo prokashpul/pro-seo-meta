@@ -11,7 +11,7 @@ import { ApiKeyModal } from './components/ApiKeyModal';
 import { About } from './components/About';
 import { PromptGenerator } from './components/PromptGenerator';
 import { EventCalendar } from './components/EventCalendar';
-import { Zap, Aperture, Layers, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar } from 'lucide-react';
+import { Zap, Aperture, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar, Layers } from 'lucide-react';
 import JSZip from 'jszip';
 
 const MAX_PARALLEL_UPLOADS = 3;
@@ -513,8 +513,8 @@ function App() {
             className="flex items-center gap-2 cursor-pointer group"
             onClick={() => handleNavClick('generator')}
           >
-            <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-lg group-hover:shadow-lg transition-all">
-              <Layers className="text-white w-6 h-6" />
+            <div className="p-1 rounded-lg group-hover:shadow-lg transition-all animate-in zoom-in bg-gradient-to-br from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20">
+              <Layers className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
               <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">

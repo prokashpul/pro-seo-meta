@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Layers, Sun, Moon, Loader2, Key } from 'lucide-react';
+import { Sun, Moon, Loader2, Key, Layers } from 'lucide-react';
 
 interface LoginProps {
   onLogin: () => void;
@@ -29,8 +30,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, isLoggingIn, isDarkMode, 
 
       <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 text-center animate-in fade-in zoom-in-95 duration-300">
         <div className="flex justify-center mb-6">
-          <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-3 rounded-xl shadow-lg">
-            <Layers className="text-white w-8 h-8" />
+          <div className="p-3 rounded-xl shadow-lg transition-transform hover:scale-105 bg-white dark:bg-slate-800">
+            <Layers className="w-12 h-12 text-indigo-600 dark:text-indigo-400" />
           </div>
         </div>
         

@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { UploadCloud, Sparkles, Edit3, Download, Zap, Aperture, TrendingUp, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { UploadCloud, Sparkles, Edit3, Download, Zap, Aperture, TrendingUp, ShieldCheck, ArrowLeft, Layers, Calendar, Image as ImageIcon, FileType } from 'lucide-react';
 
 interface AboutProps {
   onBack?: () => void;
@@ -7,100 +8,120 @@ interface AboutProps {
 
 export const About: React.FC<AboutProps> = ({ onBack }) => {
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 relative pb-12">
       {onBack && (
         <button 
           onClick={onBack}
-          className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-indigo-500 transition-colors font-medium"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-indigo-500 transition-colors font-medium"
         >
           <ArrowLeft size={16} /> Back to Home
         </button>
       )}
 
       <div className="text-center mb-12">
+        <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 mb-4">
+            <Layers className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
+        </div>
         <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500">
           About StockMeta AI
         </h2>
         <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-400 text-lg">
-          The intelligent workflow automation tool designed specifically for Adobe Stock and Shutterstock contributors.
+          The ultimate AI-powered workflow tool for stock photography & vector contributors. 
+          Optimize metadata, generate prompts, and plan your shoots—all in one place.
         </p>
       </div>
 
-      {/* How It Works Section */}
+      {/* Main Workflow Section */}
       <div className="mb-16">
         <h3 className="text-xl font-bold mb-8 text-slate-900 dark:text-white flex items-center gap-2">
           <span className="bg-indigo-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
-          How it Works
+          The Workflow
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+          <div className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
             <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4">
               <UploadCloud size={24} />
             </div>
-            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Upload Assets</h4>
+            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Smart Upload & Vectors</h4>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              Drag and drop your stock photos (JPG, PNG, WEBP) or vector files (EPS, AI). The system automatically pairs vectors with their preview images if they share the same filename.
+              Upload <strong>JPG, PNG, WEBP</strong> images or <strong>EPS/AI</strong> vector files. 
+              The system intelligently pairs vector files with their matching preview images (e.g., `flower.eps` + `flower.jpg`) to ensure your metadata applies to both assets.
             </p>
           </div>
 
-          <div className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+          <div className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
             <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-4">
               <Sparkles size={24} />
             </div>
-            <h4 className="font-bold text-slate-900 dark:text-white mb-2">AI Analysis</h4>
+            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Gemini Vision Analysis</h4>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              Google Gemini Vision models analyze your content to understand composition, mood, and objects. It automatically generates SEO-friendly titles (55-150 chars), descriptions (max 200 chars), and 35-49 keywords.
+              We use Google's <strong>Gemini 3 Pro</strong> and <strong>Flash 2.5</strong> models to "see" your images. 
+              It generates:
+              <ul className="list-disc list-inside mt-2 space-y-1 opacity-80">
+                  <li>SEO Titles (55-150 chars)</li>
+                  <li>Agency-Optimized Descriptions (70-200 chars)</li>
+                  <li>35-49 Relevancy-ranked Keywords</li>
+              </ul>
             </p>
           </div>
 
-          <div className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+          <div className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
             <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
               <Edit3 size={24} />
             </div>
-            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Review & Refine</h4>
+            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Advanced Bulk Editing</h4>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              Use <strong>Bulk Edit</strong> to manage keywords across multiple files. Use <strong>Trend Search</strong> to find high-traffic keywords from Google Search. Auto-save ensures you never lose work.
+              Manage large batches with ease.
+              <ul className="list-disc list-inside mt-2 space-y-1 opacity-80">
+                  <li><strong>Keywords:</strong> Add, Remove, or Replace tags across all selected files.</li>
+                  <li><strong>Titles:</strong> Find & Replace text, Append suffix, or Prepend prefix for series consistency.</li>
+              </ul>
             </p>
           </div>
 
-          <div className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+          <div className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
             <div className="w-12 h-12 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
               <Download size={24} />
             </div>
-            <h4 className="font-bold text-slate-900 dark:text-white mb-2">Export</h4>
+            <h4 className="font-bold text-slate-900 dark:text-white mb-2">ZIP Export</h4>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-              Download a ready-to-upload ZIP file. It includes your renamed assets (based on titles) and a CSV file formatted for stock agencies.
+              One-click download of a <strong>ZIP file</strong> containing:
+              <ul className="list-disc list-inside mt-2 space-y-1 opacity-80">
+                  <li>Your images renamed to match their SEO Titles.</li>
+                  <li>Your vector files (EPS/AI) renamed to match.</li>
+                  <li>A <strong>metadata.csv</strong> file formatted for Adobe Stock, Shutterstock, and Getty Images.</li>
+              </ul>
             </p>
           </div>
         </div>
       </div>
 
-      {/* Features Section */}
+      {/* Tools Ecosystem */}
       <div className="mb-16">
         <h3 className="text-xl font-bold mb-8 text-slate-900 dark:text-white flex items-center gap-2">
           <span className="bg-indigo-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
-          Key Features
+          Tools Ecosystem
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
            <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
               <div className="flex items-center gap-3 mb-3">
-                <Aperture className="text-indigo-500" size={20} />
-                <h4 className="font-bold text-slate-800 dark:text-slate-200">Vision Intelligence</h4>
+                <ImageIcon className="text-pink-500" size={20} />
+                <h4 className="font-bold text-slate-800 dark:text-slate-200">Reverse Prompts</h4>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Uses state-of-the-art multimodal AI to "see" your images like a human reviewer would, identifying subtle concepts and technical details.
+                Upload any image to generate a detailed AI text prompt. Use this to recreate styles in Midjourney or Stable Diffusion.
               </p>
            </div>
            
            <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
               <div className="flex items-center gap-3 mb-3">
-                <Zap className="text-yellow-500" size={20} />
-                <h4 className="font-bold text-slate-800 dark:text-slate-200">Dual Modes</h4>
+                <Calendar className="text-blue-500" size={20} />
+                <h4 className="font-bold text-slate-800 dark:text-slate-200">Event Calendar</h4>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Switch between <strong>Fast Mode</strong> for quick results or <strong>Pro Analysis</strong> for maximum detail and reasoning capabilities.
+                Plan your shoots with our Global and Indian event calendar. Track submission deadlines to ensure your content is online before buyers search for it.
               </p>
            </div>
 
@@ -110,7 +131,7 @@ export const About: React.FC<AboutProps> = ({ onBack }) => {
                 <h4 className="font-bold text-slate-800 dark:text-slate-200">Trend Grounding</h4>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Real-time connection to Google Search (via Gemini) to find trending keywords related to your specific content.
+                Real-time connection to Google Search finding trending keywords related to your specific content.
               </p>
            </div>
         </div>
@@ -123,9 +144,12 @@ export const About: React.FC<AboutProps> = ({ onBack }) => {
                 <ShieldCheck className="text-indigo-600 dark:text-indigo-400" size={24} />
              </div>
              <div>
-                <h4 className="font-bold text-indigo-900 dark:text-indigo-300 mb-1">Privacy & Security</h4>
+                <h4 className="font-bold text-indigo-900 dark:text-indigo-300 mb-1">Privacy & Local Caching</h4>
                 <p className="text-sm text-indigo-700 dark:text-indigo-400/80">
-                   StockMeta AI runs entirely in your browser. Your images are processed directly by the Gemini API and are not stored on our servers. Your API Key is saved locally in your browser's secure storage.
+                   StockMeta AI runs entirely in your browser ("Client-Side"). 
+                   <br/><br/>
+                   Your images are processed directly by the Gemini API and are <strong>never stored on our servers</strong>. 
+                   Your API Key and preferences (Dark Mode, Advanced Settings) are stored securely in your browser's <strong>Local Storage</strong> (Cache) for convenience, ensuring you don't need to re-enter them every time.
                 </p>
              </div>
           </div>
