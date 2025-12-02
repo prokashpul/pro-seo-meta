@@ -11,7 +11,7 @@ import { ApiKeyModal } from './components/ApiKeyModal';
 import { About } from './components/About';
 import { PromptGenerator } from './components/PromptGenerator';
 import { EventCalendar } from './components/EventCalendar';
-import { Zap, Aperture, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar, Layers } from 'lucide-react';
+import { Zap, Aperture, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar, Layers, Filter } from 'lucide-react';
 import JSZip from 'jszip';
 
 const MAX_PARALLEL_UPLOADS = 3;
@@ -28,6 +28,9 @@ function App() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [renameOnExport, setRenameOnExport] = useState(true);
+  
+  // Filter State
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   
   // Initialize Dark Mode from Local Storage
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -224,7 +227,8 @@ function App() {
         setIsApiKeyModalOpen(true);
         return;
     }
-    const toProcess = files.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR);
+    // Filter files that are visible AND needing processing
+    const toProcess = filteredFiles.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR);
     toProcess.forEach(f => processFile(f));
   };
   
@@ -379,6 +383,12 @@ function App() {
       setIsMobileMenuOpen(false);
   }
 
+  // Filtered List Logic
+  const filteredFiles = files.filter(f => {
+    if (statusFilter === 'ALL') return true;
+    return f.status === statusFilter;
+  });
+
   // Bulk Selection Logic and other methods...
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -393,10 +403,23 @@ function App() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === files.length) {
-      setSelectedIds(new Set());
+    // Check if all currently VISIBLE files are selected
+    const allVisibleSelected = filteredFiles.length > 0 && filteredFiles.every(f => selectedIds.has(f.id));
+
+    if (allVisibleSelected) {
+      // Deselect visible files
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        filteredFiles.forEach(f => newSet.delete(f.id));
+        return newSet;
+      });
     } else {
-      setSelectedIds(new Set(files.map(f => f.id)));
+      // Select all visible files
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        filteredFiles.forEach(f => newSet.add(f.id));
+        return newSet;
+      });
     }
   };
 
@@ -474,6 +497,8 @@ function App() {
     }));
   };
 
+  const getStatusCount = (status: ProcessingStatus) => files.filter(f => f.status === status).length;
+
   if (!user) {
     return (
       <Login 
@@ -486,7 +511,7 @@ function App() {
   }
 
   const selectedCount = selectedIds.size;
-  const pendingFilesCount = files.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR).length;
+  const pendingFilesCount = filteredFiles.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR).length;
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-[#0f172a]' : 'bg-slate-50'}`}>
@@ -846,15 +871,15 @@ function App() {
               <div className={`flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 sticky top-20 z-40 backdrop-blur p-4 rounded-xl border shadow-xl transition-all ${
                 isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'
               }`}>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {selectedCount > 0 ? (
                     <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2">
                       <button 
                           onClick={handleSelectAll}
                           className="text-indigo-400 font-medium text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-indigo-500/10 transition-colors"
                       >
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedCount === files.length ? 'bg-indigo-500 border-indigo-500' : 'border-indigo-400'}`}>
-                            {selectedCount === files.length && <CheckSquare size={10} className="text-white" />}
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedCount === filteredFiles.length ? 'bg-indigo-500 border-indigo-500' : 'border-indigo-400'}`}>
+                            {selectedCount === filteredFiles.length && <CheckSquare size={10} className="text-white" />}
                         </div>
                         {selectedCount} Selected
                       </button>
@@ -874,6 +899,30 @@ function App() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3">
+
+                  {/* Filter Dropdown */}
+                  <div className="relative group">
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
+                       statusFilter !== 'ALL' 
+                       ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400'
+                       : 'bg-transparent border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                    }`}>
+                      <Filter size={14} />
+                      <select 
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="bg-transparent border-none text-xs font-medium focus:ring-0 cursor-pointer appearance-none pr-4"
+                      >
+                         <option value="ALL">All Statuses ({files.length})</option>
+                         <option value={ProcessingStatus.IDLE}>Idle ({getStatusCount(ProcessingStatus.IDLE)})</option>
+                         <option value={ProcessingStatus.ANALYZING}>Analyzing ({getStatusCount(ProcessingStatus.ANALYZING)})</option>
+                         <option value={ProcessingStatus.COMPLETED}>Completed ({getStatusCount(ProcessingStatus.COMPLETED)})</option>
+                         <option value={ProcessingStatus.ERROR}>Error ({getStatusCount(ProcessingStatus.ERROR)})</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="hidden sm:block w-px h-4 bg-slate-700"></div>
                   
                   {/* Generate Button (Primary Action) */}
                   {pendingFilesCount > 0 && (
@@ -966,7 +1015,7 @@ function App() {
 
             {/* List of Cards */}
             <div className="space-y-6">
-              {files.map(file => (
+              {filteredFiles.map(file => (
                 <MetadataCard 
                   key={file.id} 
                   item={file} 
@@ -979,6 +1028,18 @@ function App() {
                   apiKey={apiKey}
                 />
               ))}
+              
+              {filteredFiles.length === 0 && files.length > 0 && (
+                  <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
+                     <p className="text-slate-500 dark:text-slate-400">No files match the current filter.</p>
+                     <button 
+                        onClick={() => setStatusFilter('ALL')}
+                        className="mt-2 text-indigo-500 hover:underline text-sm font-medium"
+                     >
+                        Clear Filter
+                     </button>
+                  </div>
+              )}
             </div>
 
             {/* Empty State Help */}
