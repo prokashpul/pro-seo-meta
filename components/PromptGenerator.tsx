@@ -111,8 +111,9 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
     const completedItems = items.filter(i => i.status === 'completed' && i.prompt);
     if (completedItems.length === 0) return;
 
-    const headers = ['Prompt'];
-    const rows = completedItems.map(item => [
+    const headers = ['No.', 'Prompt'];
+    const rows = completedItems.map((item, index) => [
+      index + 1,
       `"${item.prompt.replace(/"/g, '""')}"`
     ]);
 
@@ -165,8 +166,11 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
 
       if (allPrompts.length === 0) return;
 
-      const headers = ['Prompt'];
-      const rows = allPrompts.map(p => [`"${p.replace(/"/g, '""')}"`]);
+      const headers = ['No.', 'Prompt'];
+      const rows = allPrompts.map((p, index) => [
+          index + 1,
+          `"${p.replace(/"/g, '""')}"`
+      ]);
       const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
       downloadCSV(csvContent, 'expanded_prompts');
   };
