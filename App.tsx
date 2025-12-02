@@ -13,6 +13,7 @@ import { PromptGenerator } from './components/PromptGenerator';
 import { EventCalendar } from './components/EventCalendar';
 import { Zap, Aperture, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar, Layers, Filter } from 'lucide-react';
 import JSZip from 'jszip';
+import { Logo } from './components/Logo';
 
 const MAX_PARALLEL_UPLOADS = 3;
 
@@ -497,8 +498,6 @@ function App() {
     }));
   };
 
-  const getStatusCount = (status: ProcessingStatus) => files.filter(f => f.status === status).length;
-
   if (!user) {
     return (
       <Login 
@@ -538,8 +537,8 @@ function App() {
             className="flex items-center gap-2 cursor-pointer group"
             onClick={() => handleNavClick('generator')}
           >
-            <div className="p-1 rounded-lg group-hover:shadow-lg transition-all animate-in zoom-in bg-gradient-to-br from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20">
-              <Layers className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+            <div className="p-1 rounded-lg group-hover:shadow-lg transition-all animate-in zoom-in">
+              <Logo className="w-8 h-8" />
             </div>
             <div>
               <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
@@ -554,7 +553,7 @@ function App() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-4">
              
-             {/* Home Button (Visible when not on Home) */}
+             {/* Metadata Button (Visible when not on Metadata) */}
              {view !== 'generator' && (
                  <button
                     onClick={() => setView('generator')}
@@ -563,10 +562,10 @@ function App() {
                         ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:border-slate-600' 
                         : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
                     }`}
-                    title="Back to Generator"
+                    title="Back to Metadata"
                   >
                     <Home size={14} />
-                    <span>Home</span>
+                    <span>Metadata</span>
                   </button>
              )}
 
@@ -744,7 +743,7 @@ function App() {
                                 : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                             }`}
                          >
-                            <Home size={16} /> Home
+                            <Home size={16} /> Metadata
                          </button>
 
                          <button
@@ -871,7 +870,7 @@ function App() {
               <div className={`flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 sticky top-20 z-40 backdrop-blur p-4 rounded-xl border shadow-xl transition-all ${
                 isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'
               }`}>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-3">
                   {selectedCount > 0 ? (
                     <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2">
                       <button 
@@ -887,7 +886,7 @@ function App() {
                   ) : (
                     <>
                       <span className={`font-medium text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                        {files.length} Asset{files.length !== 1 ? 's' : ''}
+                        {filteredFiles.length} Asset{filteredFiles.length !== 1 ? 's' : ''}
                       </span>
                       <span className="hidden sm:inline w-px h-4 bg-slate-700"></span>
                       <span className="text-slate-500 text-xs flex items-center gap-1">
@@ -896,33 +895,25 @@ function App() {
                       </span>
                     </>
                   )}
+
+                  {/* Status Filter Dropdown */}
+                  <div className="hidden sm:flex items-center gap-2 ml-4 border-l border-slate-700 pl-4">
+                     <Filter size={14} className="text-slate-500" />
+                     <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className={`text-xs font-medium bg-transparent border-none focus:ring-0 cursor-pointer py-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
+                     >
+                         <option value="ALL">All Status</option>
+                         <option value="IDLE">Idle</option>
+                         <option value="ANALYZING">Processing</option>
+                         <option value="COMPLETED">Completed</option>
+                         <option value="ERROR">Error</option>
+                     </select>
+                  </div>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3">
-
-                  {/* Filter Dropdown */}
-                  <div className="relative group">
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors ${
-                       statusFilter !== 'ALL' 
-                       ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400'
-                       : 'bg-transparent border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
-                    }`}>
-                      <Filter size={14} />
-                      <select 
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="bg-transparent border-none text-xs font-medium focus:ring-0 cursor-pointer appearance-none pr-4"
-                      >
-                         <option value="ALL">All Statuses ({files.length})</option>
-                         <option value={ProcessingStatus.IDLE}>Idle ({getStatusCount(ProcessingStatus.IDLE)})</option>
-                         <option value={ProcessingStatus.ANALYZING}>Analyzing ({getStatusCount(ProcessingStatus.ANALYZING)})</option>
-                         <option value={ProcessingStatus.COMPLETED}>Completed ({getStatusCount(ProcessingStatus.COMPLETED)})</option>
-                         <option value={ProcessingStatus.ERROR}>Error ({getStatusCount(ProcessingStatus.ERROR)})</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="hidden sm:block w-px h-4 bg-slate-700"></div>
                   
                   {/* Generate Button (Primary Action) */}
                   {pendingFilesCount > 0 && (
@@ -1030,14 +1021,14 @@ function App() {
               ))}
               
               {filteredFiles.length === 0 && files.length > 0 && (
-                  <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
-                     <p className="text-slate-500 dark:text-slate-400">No files match the current filter.</p>
-                     <button 
+                  <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                      <p>No files match the current filter.</p>
+                      <button 
                         onClick={() => setStatusFilter('ALL')}
-                        className="mt-2 text-indigo-500 hover:underline text-sm font-medium"
-                     >
-                        Clear Filter
-                     </button>
+                        className="mt-2 text-indigo-500 hover:underline"
+                      >
+                          Clear Filter
+                      </button>
                   </div>
               )}
             </div>

@@ -273,7 +273,7 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
           onClick={onBack}
           className="mb-6 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-indigo-500 transition-colors font-medium"
         >
-          <ArrowLeft size={16} /> Back to Home
+          <ArrowLeft size={16} /> Back to Metadata
         </button>
       )}
 
