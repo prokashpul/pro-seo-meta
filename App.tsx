@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { UploadedFile, ProcessingStatus, ModelMode, StockMetadata } from './types';
 import { generateImageMetadata, getTrendingKeywords } from './services/geminiService';
@@ -13,7 +12,6 @@ import { PromptGenerator } from './components/PromptGenerator';
 import { EventCalendar } from './components/EventCalendar';
 import { Zap, Aperture, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar, Layers, Filter } from 'lucide-react';
 import JSZip from 'jszip';
-import { Logo } from './components/Logo';
 
 const MAX_PARALLEL_UPLOADS = 3;
 
@@ -538,7 +536,7 @@ function App() {
             onClick={() => handleNavClick('generator')}
           >
             <div className="p-1 rounded-lg group-hover:shadow-lg transition-all animate-in zoom-in">
-              <Logo className="w-8 h-8" />
+              <Layers className="w-8 h-8 text-indigo-500" />
             </div>
             <div>
               <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
