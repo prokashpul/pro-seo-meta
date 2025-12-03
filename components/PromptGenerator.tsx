@@ -194,6 +194,12 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // --- PROGRESS CALCULATIONS FOR REVERSE MODE ---
+  const totalItems = items.length;
+  const completedItems = items.filter(i => i.status === 'completed').length;
+  const isGenerating = items.some(i => i.status === 'loading');
+  const progressPercentage = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       {onBack && (
@@ -248,7 +254,18 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
            </div>
 
             {items.length > 0 && (
-                <div className="flex flex-wrap md:flex-nowrap justify-between items-center gap-3 mb-6 sticky top-20 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="flex flex-wrap md:flex-nowrap justify-between items-center gap-3 mb-6 sticky top-20 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                
+                {/* Progress Bar */}
+                {isGenerating && (
+                    <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-200 dark:bg-slate-700">
+                        <div 
+                        className="h-full bg-pink-500 transition-all duration-300 ease-out"
+                        style={{ width: `${progressPercentage}%` }}
+                        />
+                    </div>
+                )}
+                
                 <div>
                     {items.filter(i => i.status === 'idle' || i.status === 'error').length > 0 && (
                     <button

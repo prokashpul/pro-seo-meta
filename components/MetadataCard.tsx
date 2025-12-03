@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Check, TrendingUp, RefreshCw, X, AlertCircle, Cloud, Loader2, FileType, Sparkles, Trash2, FilterX } from 'lucide-react';
 import { UploadedFile, StockMetadata, ProcessingStatus } from '../types';
@@ -279,7 +280,7 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
             {/* Title */}
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Title</label>
+                <label className="text-xs font-semibold text-black dark:text-slate-400 uppercase tracking-wider">Title</label>
                 <div className="flex items-center gap-2">
                    <span className={`text-[10px] ${
                        displayMetadata.title.length < TITLE_MIN || displayMetadata.title.length > TITLE_MAX 

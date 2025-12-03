@@ -7,16 +7,16 @@ const metadataSchema: Schema = {
   properties: {
     title: {
       type: Type.STRING,
-      description: "A descriptive, SEO-friendly title for the stock image (55-150 characters).",
+      description: "A highly detailed, SEO-rich stock photography title. Must include Subject, Action, Context, and distinct visual details. Length: 70-150 characters.",
     },
     description: {
       type: Type.STRING,
-      description: "SEO-optimized description for Adobe Stock & Shutterstock. Natural language summary of subject, action, and context. Length: 70-200 characters.",
+      description: "Elite SEO Description. STRICT FORMULA: [Main Subject] + [Action/State] + [Context/Background]. Example: 'A happy young woman using a smartphone in a sunny city park.' Natural sentence structure only. No 'Image of'. Length: 70-200 characters.",
     },
     keywords: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "A list of 35-49 relevant keywords/tags ordered by relevance.",
+      description: "List of 40-49 high-impact keywords. ORDER IS CRITICAL: Most relevant (Subject/Action) first, followed by Environment, then Concepts/Feelings.",
     },
     category: {
       type: Type.STRING,
@@ -131,27 +131,45 @@ export const generateImageMetadata = async (
     let pngInstructions = "";
     if (mimeType === 'image/png') {
         pngInstructions = `
-        CRITICAL INSTRUCTION FOR PNG IMAGES:
-        Visually check if this image has a transparent background or shows an object isolated on a transparent/white background.
-        IF DETECTED:
-        1. Title: MUST append the phrase "Isolated on Transparent Background" at the end of the title.
-        2. Description: MUST include the phrase "isolated on transparent background" within the description sentence.
-        3. Keywords: MUST include "isolated", "transparent", "background", "cutout", "png".
+        CRITICAL INSTRUCTIONS FOR PNG IMAGES:
+        1. VISUAL CHECK: Determine if the image has a transparent background (checkerboard or invisible) or is an isolated object.
+        2. IF TRANSPARENT/ISOLATED:
+           - Title MUST end with the exact phrase: "Isolated on Transparent Background".
+           - Description MUST contain the phrase: "isolated on transparent background".
+           - Keywords MUST include: "transparent", "background", "isolated", "cutout", "png".
+           - NEGATIVE CONSTRAINT: DO NOT use the words "Black", "Dark", or "White" to describe the background. Treat the background as non-existent/transparent.
         `;
     }
 
     const prompt = `
-      You are an expert stock photography contributor for Adobe Stock and Shutterstock.
-      Analyze the uploaded image visually.
+      Act as an ELITE Stock Photography Metadata Expert for Adobe Stock, Shutterstock, and Getty Images.
+      Your goal is MAXIMAL SEO DISCOVERABILITY and HIGH SALES CONVERSION.
+
+      Analyze the image visually and generate metadata following these STRICT professional standards:
+
+      1. TITLE (Detailed & SEO-Rich):
+         - Structure: [Precise Subject] + [Action] + [Context] + [Distinctive Details].
+         - Example: "Happy young female entrepreneur working on laptop in modern bright office with glass walls."
+         - Avoid generic titles like "Business woman". Be specific.
+         - Length: 70-150 characters.
+      
+      2. DESCRIPTION (The "Adobe Rule"):
+         - Structure: [Main Subject] + [Action/State] + [Context/Environment].
+         - Example: "A confident business woman analyzing charts on a tablet in a modern glass office."
+         - Must be a complete, natural sentence.
+         - NEVER start with "Image of", "Photo of", "A shot of".
+         - Length: STRICTLY 70 to 200 characters.
+
+      3. KEYWORDS (Relevance Sorted):
+         - Generate exactly 49 keywords.
+         - ORDER MATTERS: The first 10 keywords MUST be the most obvious visual elements (Subject, Action, Objects).
+         - Next 20 keywords: Context, Environment, Lighting, Style (e.g., "sunny", "modern", "bokeh", "studio shot").
+         - Final 19 keywords: Concepts, Emotions, Metaphors (e.g., "success", "freedom", "innovation", "teamwork").
+         - NO trademarked names/brands.
+
       ${pngInstructions}
       
-      Generate metadata that maximizes SEO potential following strict agency guidelines:
-      1. Title: Catchy, descriptive, and relevant. MUST be between 55 and 150 characters.
-      2. Description: Optimized for Adobe Stock & Shutterstock. Write a concise, natural sentence describing the subject, action, and context. STRICTLY between 70 and 200 characters.
-      3. Keywords: Provide 35-49 keywords. Include conceptual tags (e.g., "success", "freedom") and literal tags (e.g., "blue sky", "laptop").
-      4. Category: Choose the single best standard category.
-      
-      Ensure the output is strict JSON.
+      Output strict JSON.
     `;
 
     // Use the retry wrapper

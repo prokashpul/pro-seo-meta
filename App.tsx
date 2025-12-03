@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { UploadedFile, ProcessingStatus, ModelMode, StockMetadata } from './types';
 import { generateImageMetadata, getTrendingKeywords } from './services/geminiService';
@@ -427,23 +428,30 @@ function App() {
       if (!selectedIds.has(file.id) || !file.metadata) return file;
 
       if (field === 'keywords') {
-          const keywords = value as string[];
+          const keywords = value as string[]; // Can be string[] or {find, replace} for REPLACE_TEXT
           let newKeywords = [...file.metadata.keywords];
           
           if (action === 'ADD') {
             const existing = new Set(newKeywords.map(k => k.toLowerCase()));
-            keywords.forEach(k => {
+            (value as string[]).forEach(k => {
               if (!existing.has(k.toLowerCase())) {
                 newKeywords.push(k);
               }
             });
           } else if (action === 'REMOVE') {
-            const toRemove = new Set(keywords.map(k => k.toLowerCase()));
+            const toRemove = new Set((value as string[]).map(k => k.toLowerCase()));
             newKeywords = newKeywords.filter(k => !toRemove.has(k.toLowerCase()));
           } else if (action === 'REPLACE_ALL') {
-            newKeywords = [...keywords];
+            newKeywords = [...(value as string[])];
           } else if (action === 'CLEAR_ALL') {
             newKeywords = [];
+          } else if (action === 'REPLACE_TEXT') {
+              const { find, replace } = value as { find: string, replace: string };
+              if (find) {
+                  const escapedFind = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  const regex = new RegExp(escapedFind, 'gi');
+                  newKeywords = newKeywords.map(k => k.replace(regex, replace).trim()).filter(k => k.length > 0);
+              }
           }
 
           return {
@@ -453,33 +461,32 @@ function App() {
               keywords: newKeywords
             }
           };
-      } else if (field === 'title') {
-          let newTitle = file.metadata.title;
+      } else if (field === 'title' || field === 'description') {
+          // Handle both Title and Description
+          let newText = field === 'title' ? file.metadata.title : file.metadata.description;
+          const maxLength = field === 'title' ? 150 : 200;
           
           if (action === 'REPLACE_ALL') {
-              newTitle = value as string;
+              newText = value as string;
           } else if (action === 'APPEND') {
-              newTitle = `${newTitle} ${value}`.trim();
+              newText = `${newText} ${value}`.trim();
           } else if (action === 'PREPEND') {
-              newTitle = `${value} ${newTitle}`.trim();
+              newText = `${value} ${newText}`.trim();
           } else if (action === 'REMOVE') {
               const text = value as string;
-              // Case insensitive, global replacement logic for "Remove Text"
               if (text) {
                   const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                   const regex = new RegExp(escapedText, 'gi');
-                  newTitle = newTitle.replace(regex, '');
-                  // Clean up extra whitespace left behind
-                  newTitle = newTitle.replace(/\s+/g, ' ').trim();
+                  newText = newText.replace(regex, '');
+                  newText = newText.replace(/\s+/g, ' ').trim();
               }
           } else if (action === 'REPLACE_TEXT') {
               const { find, replace } = value as { find: string, replace: string };
               if (find) {
                   const escapedFind = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                   const regex = new RegExp(escapedFind, 'gi');
-                  newTitle = newTitle.replace(regex, replace);
-                  // Clean up extra whitespace left behind
-                  newTitle = newTitle.replace(/\s+/g, ' ').trim();
+                  newText = newText.replace(regex, replace);
+                  newText = newText.replace(/\s+/g, ' ').trim();
               }
           }
           
@@ -487,7 +494,7 @@ function App() {
             ...file,
             metadata: {
               ...file.metadata,
-              title: newTitle.substring(0, 150) // Enforce max length safety
+              [field]: newText.substring(0, maxLength)
             }
           };
       }
@@ -509,6 +516,13 @@ function App() {
 
   const selectedCount = selectedIds.size;
   const pendingFilesCount = filteredFiles.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR).length;
+  
+  // Calculate Processing Progress
+  const totalFiles = files.length;
+  const completedFiles = files.filter(f => f.status === ProcessingStatus.COMPLETED).length;
+  const errorFilesCount = files.filter(f => f.status === ProcessingStatus.ERROR).length;
+  const isProcessing = files.some(f => f.status === ProcessingStatus.ANALYZING);
+  const progressPercentage = totalFiles > 0 ? (completedFiles / totalFiles) * 100 : 0;
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-[#0f172a]' : 'bg-slate-50'}`}>
@@ -865,9 +879,20 @@ function App() {
 
             {/* Actions Bar */}
             {files.length > 0 && (
-              <div className={`flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 sticky top-20 z-40 backdrop-blur p-4 rounded-xl border shadow-xl transition-all ${
+              <div className={`flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 sticky top-20 z-40 backdrop-blur p-4 rounded-xl border shadow-xl transition-all relative overflow-hidden ${
                 isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'
               }`}>
+                
+                {/* Progress Bar */}
+                {isProcessing && (
+                  <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-200 dark:bg-slate-700">
+                    <div 
+                      className="h-full bg-indigo-500 transition-all duration-300 ease-out"
+                      style={{ width: `${progressPercentage}%` }}
+                    />
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3">
                   {selectedCount > 0 ? (
                     <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2">
@@ -886,7 +911,27 @@ function App() {
                       <span className={`font-medium text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                         {filteredFiles.length} Asset{filteredFiles.length !== 1 ? 's' : ''}
                       </span>
-                      <span className="hidden sm:inline w-px h-4 bg-slate-700"></span>
+                      
+                      {/* Live Counts */}
+                      {(completedFiles > 0 || errorFilesCount > 0) && (
+                        <>
+                           <span className="hidden sm:inline w-px h-4 bg-slate-300 dark:bg-slate-700"></span>
+                           <div className="flex items-center gap-3 text-xs font-medium">
+                              {completedFiles > 0 && (
+                                <span className="text-emerald-600 dark:text-emerald-400">
+                                  {completedFiles} Done
+                                </span>
+                              )}
+                              {errorFilesCount > 0 && (
+                                <span className="text-red-500 dark:text-red-400">
+                                  {errorFilesCount} Errors
+                                </span>
+                              )}
+                           </div>
+                        </>
+                      )}
+
+                      <span className="hidden sm:inline w-px h-4 bg-slate-300 dark:bg-slate-700"></span>
                       <span className="text-slate-500 text-xs flex items-center gap-1">
                         <div className={`w-2 h-2 rounded-full ${files.some(f => f.status === ProcessingStatus.ANALYZING) ? 'bg-indigo-500 animate-pulse' : 'bg-emerald-500'}`}></div>
                         {files.some(f => f.status === ProcessingStatus.ANALYZING) ? 'Processing...' : 'Ready'}
