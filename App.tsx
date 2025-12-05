@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect } from 'react';
 import { UploadedFile, ProcessingStatus, ModelMode, StockMetadata, GenerationSettings } from './types';
 import { generateImageMetadata, getTrendingKeywords } from './services/geminiService';
@@ -6,20 +5,24 @@ import { optimizeImage } from './services/imageOptimizer';
 import { FileUploader } from './components/FileUploader';
 import { MetadataCard } from './components/MetadataCard';
 import { BulkKeywordModal, BulkActionType, BulkTargetField } from './components/BulkKeywordModal';
-import { Login } from './components/Login';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { About } from './components/About';
 import { PromptGenerator } from './components/PromptGenerator';
 import { EventCalendar } from './components/EventCalendar';
 import { SettingsPanel } from './components/SettingsPanel';
-import { Zap, Aperture, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar, Layers, Filter } from 'lucide-react';
+import { Zap, Aperture, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar, Layers, Filter, Command, Activity, PieChart, CheckCircle2, AlertCircle } from 'lucide-react';
 import JSZip from 'jszip';
 
 const MAX_PARALLEL_UPLOADS = 3;
 
 function App() {
-  const [user, setUser] = useState<{name: string, email: string, avatar: string} | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  // Initialize user immediately to bypass login screen
+  const [user, setUser] = useState<{name: string, email: string, avatar: string}>({
+    name: 'StockMeta User',
+    email: 'user@example.com',
+    avatar: 'https://ui-avatars.com/api/?name=User&background=6366f1&color=fff' 
+  });
+  
   const [apiKey, setApiKey] = useState<string>('');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   
@@ -33,7 +36,7 @@ function App() {
   // Filter State
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-  // Generation Settings State
+  // Generation Settings State - FIXED DEFAULTS
   const [generationSettings, setGenerationSettings] = useState<GenerationSettings>({
     silhouette: false,
     whiteBackground: false,
@@ -43,20 +46,28 @@ function App() {
     customPromptText: '',
     prohibitedWordsEnabled: false,
     prohibitedWordsText: '',
-    // Default Ranges
+    // Fixed Ranges as requested
     titleWordCountMin: 8,
-    titleWordCountMax: 20,
-    descriptionWordCountMin: 15,
-    descriptionWordCountMax: 35,
-    keywordCountMin: 40,
-    keywordCountMax: 49
+    titleWordCountMax: 25,
+    descriptionWordCountMin: 8,
+    descriptionWordCountMax: 40,
+    keywordCountMin: 25,
+    keywordCountMax: 50
   });
   
-  // Initialize Dark Mode from Local Storage
+  // Initialize Dark Mode from Local Storage OR System Preference
   const [isDarkMode, setIsDarkMode] = useState(() => {
+    // 1. Check Local Storage
     const savedTheme = localStorage.getItem('stockmeta_theme');
-    // Default to true (dark) if no preference found
-    return savedTheme ? savedTheme === 'dark' : true;
+    if (savedTheme) {
+      return savedTheme === 'dark';
+    }
+    // 2. Check System Preference (Auto)
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return true;
+    }
+    // 3. Fallback
+    return false;
   });
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -74,59 +85,28 @@ function App() {
     }
   }, [isDarkMode]);
 
-  // Load API Key from local storage & Auto-login if key exists
+  // Load API Key from local storage on mount
   useEffect(() => {
     const storedKey = localStorage.getItem('gemini_api_key');
     if (storedKey) {
       setApiKey(storedKey);
-      // Auto-login to bypass welcome screen
-      setUser({
-        name: 'StockMeta User',
-        email: 'user@example.com',
-        avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
-      });
     }
   }, []);
 
-  const handleLogin = async () => {
-    setIsLoggingIn(true);
-    // Simulate Login
-    setTimeout(() => {
-        setUser({
-          name: 'StockMeta User',
-          email: 'user@example.com',
-          avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
-        });
-        setIsLoggingIn(false);
-        
-        // If no key is set after login, prompt for it
-        if (!localStorage.getItem('gemini_api_key')) {
-           setIsApiKeyModalOpen(true);
-        }
-    }, 1500);
-  };
-
   const handleLogout = () => {
-    setUser(null);
+    localStorage.removeItem('gemini_api_key');
+    setApiKey('');
     setFiles([]);
     setSelectedIds(new Set());
+    setIsApiKeyModalOpen(true);
   };
 
   const handleSaveApiKey = (key: string) => {
       setApiKey(key);
       localStorage.setItem('gemini_api_key', key);
-      // Ensure user is logged in if they save the key
-      if (!user) {
-          setUser({
-            name: 'StockMeta User',
-            email: 'user@example.com',
-            avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c' 
-          });
-      }
   };
   
   const processFile = async (fileObj: UploadedFile) => {
-    // Cannot process vectors without a preview image
     if (!fileObj.file.type.startsWith('image/')) {
         setFiles(prev => prev.map(f => 
             f.id === fileObj.id 
@@ -139,42 +119,36 @@ function App() {
     try {
       setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: ProcessingStatus.ANALYZING } : f));
       
-      // Optimize image (resize & convert to WebP) before sending to AI
       const { base64, mimeType } = await optimizeImage(fileObj.file);
-      
       const metadata = await generateImageMetadata(base64, mimeType, modelMode, apiKey, generationSettings);
       
       setFiles(prev => prev.map(f => 
         f.id === fileObj.id 
-          ? { ...f, status: ProcessingStatus.COMPLETED, metadata } 
-          : f
+              ? { ...f, status: ProcessingStatus.COMPLETED, metadata } 
+              : f
       ));
     } catch (error) {
       const errorMsg = (error as Error).message;
       
-      // Auto-open API Key modal if invalid
       if (errorMsg.includes("Invalid API Key")) {
           setIsApiKeyModalOpen(true);
       }
 
       setFiles(prev => prev.map(f => 
         f.id === fileObj.id 
-          ? { ...f, status: ProcessingStatus.ERROR, error: errorMsg } 
-          : f
+              ? { ...f, status: ProcessingStatus.ERROR, error: errorMsg } 
+              : f
       ));
     }
   };
 
-  // ... (handleFilesSelected and other functions remain largely same)
   const handleFilesSelected = useCallback((incomingFiles: File[]) => {
-    // Pairing Logic
     const incomingMap = new Map<string, { image?: File, vector?: File }>();
     
     const getBasename = (name: string) => name.substring(0, name.lastIndexOf('.'));
     const isVector = (file: File) => /\.(eps|ai)$/i.test(file.name);
     const isImage = (file: File) => /\.(jpg|jpeg|png|webp)$/i.test(file.name);
 
-    // 1. Group incoming files by basename
     incomingFiles.forEach(f => {
         const base = getBasename(f.name);
         if (!incomingMap.has(base)) incomingMap.set(base, {});
@@ -187,33 +161,25 @@ function App() {
         const newFileList = [...prev];
         
         incomingMap.forEach((group, basename) => {
-            // Check if we can pair with an existing file in the list
             const existingIndex = newFileList.findIndex(f => getBasename(f.file.name) === basename);
             
             if (existingIndex >= 0) {
-                // Merge with existing entry
                 const existing = newFileList[existingIndex];
-                
-                // If we found a vector for an existing image
                 if (group.vector && !existing.vectorFile) {
                      newFileList[existingIndex] = { ...existing, vectorFile: group.vector };
                 }
-                
-                // If we found an image for an existing orphaned vector
                 if (group.image && !isImage(existing.file)) {
-                     // Replace the vector-as-file with the image-as-file
                      const updated: UploadedFile = {
                          ...existing,
                          file: group.image,
-                         vectorFile: existing.file, // The old 'file' was the vector
+                         vectorFile: existing.file,
                          previewUrl: URL.createObjectURL(group.image),
-                         status: ProcessingStatus.IDLE, // Ready to process now
+                         status: ProcessingStatus.IDLE,
                          error: undefined
                      };
                      newFileList[existingIndex] = updated;
                 }
             } else {
-                // New Entry
                 if (group.image) {
                      const newFile: UploadedFile = {
                          id: Math.random().toString(36).substring(7),
@@ -224,12 +190,11 @@ function App() {
                      };
                      newFileList.push(newFile);
                 } else if (group.vector) {
-                    // Orphan vector (no image yet)
                     const newFile: UploadedFile = {
                         id: Math.random().toString(36).substring(7),
-                        file: group.vector, // Store vector as primary temporarily
-                        previewUrl: "", // No preview
-                        status: ProcessingStatus.ERROR, // Will show error state
+                        file: group.vector,
+                        previewUrl: "", 
+                        status: ProcessingStatus.ERROR,
                         error: "Missing Preview Image",
                         vectorFile: group.vector 
                     };
@@ -248,7 +213,6 @@ function App() {
         setIsApiKeyModalOpen(true);
         return;
     }
-    // Filter files that are visible AND needing processing
     const toProcess = filteredFiles.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR);
     toProcess.forEach(f => processFile(f));
   };
@@ -297,43 +261,30 @@ function App() {
 
   const handleExportZip = async () => {
     const completedFiles = files.filter(f => f.status === ProcessingStatus.COMPLETED && f.metadata);
-    
     if (completedFiles.length === 0) return;
 
     setIsExporting(true);
-
     try {
       const zip = new JSZip();
       const usedFilenames = new Set<string>();
-      
-      // CSV Headers
       const csvRows = [['Filename', 'Title', 'Description', 'Keywords', 'Category']];
 
       completedFiles.forEach((f) => {
         const m = f.metadata!;
         const originalExt = f.file.name.split('.').pop() || 'jpg';
-        
-        // Determine the base filename
         let candidateBase = "";
 
         if (renameOnExport) {
-            // Sanitize title to create a safe filename
-            let safeTitle = m.title
-              .replace(/[^a-z0-9\s-]/gi, '')
-              .trim()
-              .replace(/\s+/g, '_')
-              .substring(0, 100);
+            let safeTitle = m.title.replace(/[^a-z0-9\s-]/gi, '').trim().replace(/\s+/g, '_').substring(0, 100);
             if (!safeTitle) safeTitle = "image";
             candidateBase = safeTitle;
         } else {
-            // Use original filename (stripped of extension)
             candidateBase = f.file.name.substring(0, f.file.name.lastIndexOf('.'));
         }
 
         let finalBase = candidateBase;
         let counter = 1;
 
-        // Check collision for the Image filename to ensure uniqueness
         while (usedFilenames.has(`${finalBase}.${originalExt}`)) {
           finalBase = `${candidateBase}_${counter}`;
           counter++;
@@ -342,12 +293,9 @@ function App() {
         const imageFilename = `${finalBase}.${originalExt}`;
         usedFilenames.add(imageFilename);
 
-        // 1. Add Image to ZIP
         zip.file(imageFilename, f.file);
 
         const escape = (str: string) => `"${str.replace(/"/g, '""')}"`;
-
-        // 2. Add Image Row to CSV
         csvRows.push([
           escape(imageFilename),
           escape(m.title),
@@ -356,15 +304,10 @@ function App() {
           escape(m.category)
         ]);
 
-        // 3. Handle Vector (if exists) - Add to ZIP and Add separate CSV row
         if (f.vectorFile) {
             const vectorExt = f.vectorFile.name.split('.').pop() || 'eps';
             const vectorFilename = `${finalBase}.${vectorExt}`;
-            
-            // Add Vector to Zip
             zip.file(vectorFilename, f.vectorFile);
-
-            // Add Vector Row to CSV
             csvRows.push([
               escape(vectorFilename),
               escape(m.title),
@@ -375,13 +318,9 @@ function App() {
         }
       });
 
-      // Add CSV to zip
       zip.file("metadata.csv", csvRows.map(r => r.join(',')).join('\n'));
-
-      // Generate the zip file
       const content = await zip.generateAsync({ type: "blob" });
 
-      // Trigger download
       const url = URL.createObjectURL(content);
       const link = document.createElement('a');
       link.href = url;
@@ -404,13 +343,11 @@ function App() {
       setIsMobileMenuOpen(false);
   }
 
-  // Filtered List Logic
   const filteredFiles = files.filter(f => {
     if (statusFilter === 'ALL') return true;
     return f.status === statusFilter;
   });
 
-  // Bulk Selection Logic (omitted for brevity, assume same as before)
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const newSet = new Set(prev);
@@ -440,11 +377,11 @@ function App() {
   const handleBulkApply = (action: BulkActionType, value: any, field: BulkTargetField) => {
     setFiles(prev => prev.map(file => {
       if (!selectedIds.has(file.id) || !file.metadata) return file;
-
-      if (field === 'keywords') {
+      
+      // Bulk Logic
+       if (field === 'keywords') {
           const keywords = value as string[]; 
           let newKeywords = [...file.metadata.keywords];
-          
           if (action === 'ADD') {
             const existing = new Set(newKeywords.map(k => k.toLowerCase()));
             (value as string[]).forEach(k => {
@@ -465,19 +402,14 @@ function App() {
                   newKeywords = newKeywords.map(k => k.replace(regex, replace).trim()).filter(k => k.length > 0);
               }
           }
-
           return { ...file, metadata: { ...file.metadata, keywords: newKeywords } };
       } else if (field === 'title' || field === 'description') {
           let newText = field === 'title' ? file.metadata.title : file.metadata.description;
           const maxLength = field === 'title' ? 150 : 200;
-          
-          if (action === 'REPLACE_ALL') {
-              newText = value as string;
-          } else if (action === 'APPEND') {
-              newText = `${newText} ${value}`.trim();
-          } else if (action === 'PREPEND') {
-              newText = `${value} ${newText}`.trim();
-          } else if (action === 'REMOVE') {
+          if (action === 'REPLACE_ALL') newText = value as string;
+          else if (action === 'APPEND') newText = `${newText} ${value}`.trim();
+          else if (action === 'PREPEND') newText = `${value} ${newText}`.trim();
+          else if (action === 'REMOVE') {
               const text = value as string;
               if (text) {
                   const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -494,355 +426,373 @@ function App() {
                   newText = newText.replace(/\s+/g, ' ').trim();
               }
           }
-          
           return { ...file, metadata: { ...file.metadata, [field]: newText.substring(0, maxLength) } };
       }
       return file;
     }));
   };
 
-  if (!user) {
-    return (
-      <Login 
-        onLogin={handleLogin} 
-        isLoggingIn={isLoggingIn}
-        isDarkMode={isDarkMode} 
-        toggleTheme={() => setIsDarkMode(!isDarkMode)} 
-      />
-    );
-  }
-
   const selectedCount = selectedIds.size;
   const pendingFilesCount = filteredFiles.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR).length;
-  
-  // Progress calculations
-  const totalFiles = files.length;
+  const processingCount = files.filter(f => f.status === ProcessingStatus.ANALYZING).length;
   const completedFiles = files.filter(f => f.status === ProcessingStatus.COMPLETED).length;
   const errorFilesCount = files.filter(f => f.status === ProcessingStatus.ERROR).length;
-  const isProcessing = files.some(f => f.status === ProcessingStatus.ANALYZING);
-  const progressPercentage = totalFiles > 0 ? (completedFiles / totalFiles) * 100 : 0;
+  
+  // Progress Calculation
+  const totalUploads = files.length;
+  const progressPercent = totalUploads > 0 ? ((completedFiles + errorFilesCount) / totalUploads) * 100 : 0;
+  const isProcessing = processingCount > 0;
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-[#0f172a]' : 'bg-slate-50'}`}>
-      <ApiKeyModal 
-        isOpen={isApiKeyModalOpen}
-        onClose={() => setIsApiKeyModalOpen(false)}
-        onSave={handleSaveApiKey}
-        currentKey={apiKey}
-      />
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-500 ${isDarkMode ? 'bg-[#050505]' : 'bg-[#f8fafc]'}`}>
+      
+      {/* Clean Gradient Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+         <div className={`absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b ${isDarkMode ? 'from-indigo-900/10 to-transparent' : 'from-indigo-100/50 to-transparent'}`} />
+         <div className={`absolute bottom-0 right-0 w-[800px] h-[600px] rounded-full blur-[120px] opacity-[0.05] ${isDarkMode ? 'bg-blue-600' : 'bg-blue-600/30'}`} />
+         {/* Additional Light Mode Ambient Mesh */}
+         {!isDarkMode && (
+            <div className="absolute top-[20%] right-[10%] w-[400px] h-[400px] rounded-full blur-[80px] bg-purple-100/40 opacity-50" />
+         )}
+      </div>
 
-      <BulkKeywordModal 
-        isOpen={isBulkModalOpen} 
-        onClose={() => setIsBulkModalOpen(false)}
-        onApply={handleBulkApply}
-        selectedCount={selectedCount}
-      />
+      <ApiKeyModal isOpen={isApiKeyModalOpen} onClose={() => setIsApiKeyModalOpen(false)} onSave={handleSaveApiKey} currentKey={apiKey} />
+      <BulkKeywordModal isOpen={isBulkModalOpen} onClose={() => setIsBulkModalOpen(false)} onApply={handleBulkApply} selectedCount={selectedCount} />
 
-      {/* Header */}
-      <header className={`backdrop-blur-md border-b sticky top-0 z-50 transition-colors duration-300 ${
-        isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white/70 border-slate-200'
+      {/* Modern Minimal Header */}
+      <header className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-all duration-300 ${
+        isDarkMode 
+          ? 'bg-[#050505]/80 border-white/5' 
+          : 'bg-white/70 border-white/40 shadow-sm shadow-slate-200/50'
       }`}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div 
-            className="flex items-center gap-2 cursor-pointer group"
-            onClick={() => handleNavClick('generator')}
-          >
-            <div className="p-1 rounded-lg group-hover:shadow-lg transition-all animate-in zoom-in">
-              <Layers className="w-8 h-8 text-indigo-500" />
+        <div className="max-w-[1920px] mx-auto px-6 md:px-10 flex items-center justify-between py-4">
+          
+          {/* LEFT: LOGO */}
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => handleNavClick('generator')}>
+            <div className={`p-2.5 rounded-xl transition-all ${
+                isDarkMode 
+                ? 'bg-gradient-to-tr from-indigo-600 to-blue-600 shadow-lg shadow-indigo-900/20' 
+                : 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200'
+            }`}>
+              <Layers className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
-                StockMeta AI
-              </h1>
-              <p className={`text-[10px] font-medium tracking-wider hidden sm:block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                ADOBE STOCK & SHUTTERSTOCK OPTIMIZED
-              </p>
+                <h1 className={`text-2xl font-bold tracking-tight leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                StockMeta<span className="font-light opacity-70">AI</span>
+                </h1>
             </div>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-4">
-             {/* Nav Buttons... */}
-             {view !== 'generator' && (
-                 <button
-                    onClick={() => setView('generator')}
-                    className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
-                      isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Home size={14} /> <span>Metadata</span>
-                  </button>
-             )}
-             <button
-                onClick={() => setView('prompts')}
-                className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
-                  view === 'prompts' ? 'bg-pink-600 text-white border-pink-600' : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <ImageIcon size={14} /> <span>Prompts</span>
-              </button>
-             <button
-                onClick={() => setView('calendar')}
-                className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
-                  view === 'calendar' ? 'bg-blue-600 text-white border-blue-600' : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Calendar size={14} /> <span>Calendar</span>
-              </button>
-             <button
-                onClick={() => setView('about')}
-                className={`p-2 rounded-lg border transition-colors flex items-center gap-2 text-xs font-medium ${
-                  view === 'about' ? 'bg-indigo-500 text-white border-indigo-500' : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Info size={14} /> <span>About</span>
-              </button>
+          {/* RIGHT: NAVIGATION + CONTROLS */}
+          <div className="hidden md:flex items-center gap-4 lg:gap-6">
+             
+             {/* Navigation moved here */}
+             <nav className="flex items-center gap-1">
+                 {[
+                   { id: 'generator', icon: Home, label: 'Metadata' },
+                   { id: 'prompts', icon: ImageIcon, label: 'Prompts' },
+                   { id: 'calendar', icon: Calendar, label: 'Calendar' },
+                   { id: 'about', icon: Info, label: 'About' }
+                 ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setView(item.id as any)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${
+                        view === item.id 
+                        ? isDarkMode ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900'
+                        : isDarkMode ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                      }`}
+                    >
+                      <item.icon size={16} /> <span>{item.label}</span>
+                    </button>
+                 ))}
+             </nav>
+             
+             <div className="h-6 w-px bg-slate-200 dark:bg-white/10 mx-2" />
 
-            {/* Mode Switcher */}
-            {view === 'generator' && (
-              <div className={`flex p-1 rounded-lg items-center border transition-colors ${
-                isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
-              }`}>
-                <button
-                  onClick={() => setModelMode(ModelMode.FAST)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    modelMode === ModelMode.FAST ? 'bg-indigo-600 text-white shadow-lg' : isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  <Zap size={14} /> Fast
-                </button>
-                <button
-                  onClick={() => setModelMode(ModelMode.QUALITY)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    modelMode === ModelMode.QUALITY ? 'bg-purple-600 text-white shadow-lg' : isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  <Aperture size={14} /> Pro
-                </button>
-              </div>
-            )}
-
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
-
-            {/* API Key & Profile */}
-            <div className="flex items-center gap-3">
-               <button onClick={() => setIsApiKeyModalOpen(true)} className={`p-2 rounded-lg border transition-colors ${isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-white border-slate-200 text-slate-600'} ${!apiKey ? 'ring-2 ring-indigo-500' : ''}`}>
-                  <Key size={14} />
-                </button>
-                <div className="relative group">
-                   <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 cursor-pointer object-cover" />
-                   <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 border dark:border-slate-700 shadow-lg rounded-lg overflow-hidden hidden group-hover:block z-50">
-                       <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-                           <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{user.name}</p>
-                           <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
-                       </div>
-                       <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-50 flex items-center gap-2"><LogOut size={12} /> Sign Out</button>
+             {/* Integrated Control Bar */}
+             <div className={`flex items-center gap-3 p-1.5 rounded-2xl border backdrop-blur-sm ${
+                 isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-100/80 border-slate-200/50'
+             }`}>
+                 {view === 'generator' && (
+                   <div className={`flex rounded-xl p-1 shadow-sm ${isDarkMode ? 'bg-gray-800/80' : 'bg-white'}`}>
+                      <button 
+                        onClick={() => setModelMode(ModelMode.FAST)} 
+                        className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                            modelMode === ModelMode.FAST 
+                            ? isDarkMode ? 'bg-gray-700 text-indigo-400 shadow-sm' : 'bg-indigo-50 text-indigo-600 shadow-sm' 
+                            : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        <Zap size={14} /> Fast
+                      </button>
+                      <button 
+                        onClick={() => setModelMode(ModelMode.QUALITY)} 
+                        className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                            modelMode === ModelMode.QUALITY 
+                            ? isDarkMode ? 'bg-gray-700 text-purple-400 shadow-sm' : 'bg-purple-50 text-purple-600 shadow-sm'
+                            : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        <Aperture size={14} /> Quality
+                      </button>
                    </div>
-                </div>
-            </div>
+                 )}
+                 
+                 {view === 'generator' && <div className="w-px h-6 bg-gray-300 dark:bg-white/10 mx-1" />}
 
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2 rounded-full transition-colors ${isDarkMode ? 'bg-slate-800 text-yellow-400' : 'bg-slate-100 text-slate-600'}`}>
-                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
+                 <button 
+                    onClick={() => setIsApiKeyModalOpen(true)} 
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                        !apiKey 
+                        ? 'bg-red-500 text-white shadow-md shadow-red-500/20 animate-pulse' 
+                        : isDarkMode ? 'hover:bg-white/10 text-emerald-400' : 'hover:bg-white/60 text-emerald-600'
+                    }`}
+                 >
+                    {apiKey ? (
+                        <>
+                           <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                           <span className="hidden lg:inline">Connected</span>
+                           <Key size={14} className="lg:hidden" />
+                        </>
+                    ) : (
+                        <>
+                           <Key size={14} /> 
+                           <span>Connect API</span>
+                        </>
+                    )}
+                 </button>
+             </div>
+
+             <div className="flex items-center gap-3">
+                 <button 
+                    onClick={() => setIsDarkMode(!isDarkMode)} 
+                    className={`p-3 rounded-xl transition-all ${
+                        isDarkMode 
+                        ? 'text-gray-400 hover:text-amber-400 hover:bg-white/5' 
+                        : 'text-slate-400 hover:text-amber-500 hover:bg-slate-100'
+                    }`}
+                 >
+                    {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                 </button>
+
+                 <div className="relative group">
+                    <div className="h-10 w-10 rounded-full p-0.5 bg-gradient-to-br from-indigo-500 to-purple-500 cursor-pointer shadow-md hover:shadow-lg transition-all">
+                       <img src={user.avatar} alt={user.name} className="h-full w-full object-cover rounded-full border-2 border-white dark:border-[#111827]" />
+                    </div>
+                    <div className="absolute top-full right-0 mt-3 w-56 bg-white dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden hidden group-hover:block z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="p-4 border-b border-gray-100 dark:border-white/5">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">{user.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-gray-400">{user.email}</p>
+                        </div>
+                        <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2 transition-colors">
+                          <LogOut size={16} /> Reset Application
+                        </button>
+                    </div>
+                 </div>
+             </div>
           </div>
           
-          {/* Mobile Menu Toggle */}
           <div className="md:hidden flex items-center gap-3">
-             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className={`p-2 rounded-lg ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600 dark:text-gray-300">
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
              </button>
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown (omitted for brevity, assume same structure) */}
+        {/* Mobile Menu */}
         {isMobileMenuOpen && (
-            <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
-               <div className="p-4 space-y-4">
-                  {/* Mobile content mirrors desktop */}
-                  <button onClick={() => handleNavClick('generator')} className="w-full p-3 rounded bg-slate-100 dark:bg-slate-800 flex items-center gap-2"><Home size={16}/> Metadata</button>
-                  {/* ... other items ... */}
+            <div className="md:hidden border-t border-gray-200 dark:border-white/5 bg-white/95 dark:bg-[#050505]/95 backdrop-blur-xl absolute left-0 right-0 top-full p-4 shadow-xl z-[60] animate-in slide-in-from-top-2">
+               <div className="grid grid-cols-2 gap-2 mb-4">
+                  {[
+                     { id: 'generator', icon: Home, label: 'Metadata' },
+                     { id: 'prompts', icon: ImageIcon, label: 'Prompts' },
+                     { id: 'calendar', icon: Calendar, label: 'Calendar' },
+                     { id: 'about', icon: Info, label: 'About' }
+                  ].map((item) => (
+                    <button 
+                      key={item.id}
+                      onClick={() => handleNavClick(item.id as any)} 
+                      className={`p-3 rounded-lg flex flex-col items-center justify-center gap-2 text-sm font-bold transition-all ${
+                          view === item.id 
+                          ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' 
+                          : 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <item.icon size={22}/> {item.label}
+                    </button>
+                  ))}
+               </div>
+               <div className="flex gap-2">
+                   <button onClick={() => setIsDarkMode(!isDarkMode)} className="flex-1 p-3 rounded-lg bg-gray-50 dark:bg-white/5 text-base font-bold text-gray-600 dark:text-gray-300 flex items-center justify-center gap-2">
+                      {isDarkMode ? <Sun size={18} /> : <Moon size={18} />} Theme
+                   </button>
+                   <button onClick={handleLogout} className="flex-1 p-3 rounded-lg bg-red-50 dark:bg-red-900/10 text-base font-bold text-red-600 dark:text-red-400 flex items-center justify-center gap-2">
+                      <LogOut size={18} /> Reset
+                   </button>
                </div>
             </div>
         )}
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 w-full max-w-[1920px] mx-auto px-6 md:px-10 py-10 relative z-10">
         
-        {view === 'about' ? (
-          <About onBack={() => setView('generator')} />
-        ) : view === 'prompts' ? (
-          <PromptGenerator apiKey={apiKey} onBack={() => setView('generator')} />
-        ) : view === 'calendar' ? (
-          <EventCalendar onBack={() => setView('generator')} />
-        ) : (
-          <>
-            {/* Intro / Stats */}
-            <div className="mb-8">
-              <h2 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                Generate Metadata
-              </h2>
-              <p className={`max-w-2xl ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                Upload stock photography to automatically generate optimized titles, descriptions, and keywords. 
-                <span className="hidden sm:inline"> Supports paired Vectors (EPS/AI).</span>
-              </p>
+        {view === 'about' ? <About onBack={() => setView('generator')} /> : 
+         view === 'prompts' ? <PromptGenerator apiKey={apiKey} onBack={() => setView('generator')} /> : 
+         view === 'calendar' ? <EventCalendar onBack={() => setView('generator')} /> : (
+          <div className="flex flex-col gap-10 animate-in fade-in duration-500">
+            
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-200 dark:border-white/5">
+                <div>
+                  <h2 className={`text-5xl font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    Metadata Workspace
+                  </h2>
+                  <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-slate-500'}`}>
+                    Upload stock photography to automatically generate optimized titles, descriptions, and keywords. Supports paired Vectors (EPS/AI).
+                  </p>
+                </div>
             </div>
 
-            {/* SETTINGS PANEL */}
-            <SettingsPanel settings={generationSettings} onSettingsChange={setGenerationSettings} />
+            {/* Main Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                 {/* Left Panel: Settings (3 cols) */}
+                 <div className="lg:col-span-3 order-2 lg:order-1 space-y-6 lg:sticky lg:top-28">
+                    <SettingsPanel settings={generationSettings} onSettingsChange={setGenerationSettings} />
+                 </div>
+                 
+                 {/* Right Panel: Workspace (9 cols) */}
+                 <div className="lg:col-span-9 order-1 lg:order-2 space-y-8">
+                    <FileUploader onFilesSelected={handleFilesSelected} disabled={isProcessing} />
+                    
+                    {/* Action Bar */}
+                    {files.length > 0 && (
+                      <div className={`sticky top-24 z-40 rounded-xl border shadow-xl shadow-slate-200/50 dark:shadow-black/20 transition-all overflow-hidden ${
+                        isDarkMode 
+                          ? 'bg-[#111827] border-white/10' 
+                          : 'bg-white/90 border-white/60 backdrop-blur-md'
+                      }`}>
+                        
+                        {/* Integrated Progress Bar */}
+                        {isProcessing && (
+                          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gray-100 dark:bg-gray-800">
+                            <div 
+                                className="h-full bg-indigo-500 transition-all duration-300 ease-out" 
+                                style={{ width: `${Math.max(5, progressPercent)}%` }}
+                            />
+                          </div>
+                        )}
+                        
+                        <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-4 p-4 relative z-10">
+                           <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto no-scrollbar">
+                              <button 
+                                  onClick={handleSelectAll}
+                                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider transition-all border ${
+                                     selectedCount > 0 
+                                     ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/30' 
+                                     : 'border-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5'
+                                  }`}
+                              >
+                                 <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${selectedCount > 0 && selectedCount === filteredFiles.length ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 dark:border-gray-600'}`}>
+                                     {selectedCount > 0 && selectedCount === filteredFiles.length && <CheckSquare size={12} />}
+                                 </div>
+                                 {selectedCount > 0 ? `${selectedCount} Selected` : 'Select All'}
+                              </button>
+                              
+                              <div className="h-8 w-px bg-gray-200 dark:bg-white/10" />
 
-            {/* Uploader */}
-            <div className="mb-10">
-              <FileUploader onFilesSelected={handleFilesSelected} />
-            </div>
-
-            {/* Actions Bar & List (same as before) */}
-            {files.length > 0 && (
-              <div className={`flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 sticky top-20 z-40 backdrop-blur p-4 rounded-xl border shadow-xl transition-all relative overflow-hidden ${
-                isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'
-              }`}>
-                {/* Progress Bar */}
-                {isProcessing && (
-                  <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-200 dark:bg-slate-700">
-                    <div className="h-full bg-indigo-500 transition-all duration-300 ease-out" style={{ width: `${progressPercentage}%` }} />
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3">
-                  {selectedCount > 0 ? (
-                    <div className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2">
-                      <button 
-                          onClick={handleSelectAll}
-                          className="text-indigo-400 font-medium text-sm flex items-center gap-2 px-2 py-1 rounded hover:bg-indigo-500/10 transition-colors"
-                      >
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedCount === filteredFiles.length ? 'bg-indigo-500 border-indigo-500' : 'border-indigo-400'}`}>
-                            {selectedCount === filteredFiles.length && <CheckSquare size={10} className="text-white" />}
-                        </div>
-                        {selectedCount} Selected
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <span className={`font-medium text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                        {filteredFiles.length} Asset{filteredFiles.length !== 1 ? 's' : ''}
-                      </span>
-                      
-                      {(completedFiles > 0 || errorFilesCount > 0) && (
-                        <>
-                           <span className="hidden sm:inline w-px h-4 bg-slate-300 dark:bg-slate-700"></span>
-                           <div className="flex items-center gap-3 text-xs font-medium">
-                              {completedFiles > 0 && <span className="text-emerald-600 dark:text-emerald-400">{completedFiles} Done</span>}
-                              {errorFilesCount > 0 && <span className="text-red-500 dark:text-red-400">{errorFilesCount} Errors</span>}
+                              <div className="flex items-center gap-2">
+                                  <Filter size={16} className="text-gray-400" />
+                                  <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="bg-transparent border-none text-base font-bold text-slate-600 dark:text-gray-300 focus:ring-0 cursor-pointer p-0 pr-6 outline-none"
+                                  >
+                                     <option value="ALL">All Files ({files.length})</option>
+                                     <option value="COMPLETED">Completed ({completedFiles})</option>
+                                     <option value="IDLE">Pending ({files.length - completedFiles - errorFilesCount})</option>
+                                     <option value="ERROR">Errors ({errorFilesCount})</option>
+                                  </select>
+                              </div>
                            </div>
-                        </>
-                      )}
-                    </>
-                  )}
 
-                  <div className="hidden sm:flex items-center gap-2 ml-4 border-l border-slate-700 pl-4">
-                     <Filter size={14} className="text-slate-500" />
-                     <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className={`text-xs font-medium bg-transparent border-none focus:ring-0 cursor-pointer py-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}
-                     >
-                         <option value="ALL">All Status</option>
-                         <option value="IDLE">Idle</option>
-                         <option value="ANALYZING">Processing</option>
-                         <option value="COMPLETED">Completed</option>
-                         <option value="ERROR">Error</option>
-                     </select>
-                  </div>
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-3">
-                  {pendingFilesCount > 0 && (
-                    <button 
-                      onClick={handleGenerateAll}
-                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 animate-in zoom-in-95 font-semibold w-full md:w-auto justify-center"
-                    >
-                      <Sparkles size={16} />
-                      Generate Metadata ({pendingFilesCount})
-                    </button>
-                  )}
+                           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                              {selectedCount > 0 && (
+                                  <button onClick={() => setIsBulkModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-gray-200 text-sm font-bold transition-colors">
+                                    <Edit3 size={16} /> Bulk Edit
+                                  </button>
+                              )}
 
-                  {selectedCount === 0 && (
-                    <button 
-                      onClick={handleSelectAll}
-                      className={`text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
-                    >
-                      <CheckSquare size={16} /> Select All
-                    </button>
-                  )}
+                              {pendingFilesCount > 0 && (
+                                <button onClick={handleGenerateAll} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-md shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                   {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                                   Generate Pending
+                                </button>
+                              )}
 
-                  {selectedCount > 0 && (
-                    <button 
-                      onClick={() => setIsBulkModalOpen(true)}
-                      className={`text-white text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all animate-in zoom-in-95 ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-600 hover:bg-slate-500'}`}
-                    >
-                      <Edit3 size={16} /> Bulk Edit
-                    </button>
-                  )}
+                              {/* Stats Widget */}
+                              <div className="hidden lg:flex items-center gap-3 px-5 py-2.5 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/5 mr-2">
+                                  <div className="flex flex-col leading-none">
+                                      <span className="text-xs font-bold text-slate-400 uppercase">Total</span>
+                                      <span className="text-base font-bold text-slate-700 dark:text-gray-200">{files.length}</span>
+                                  </div>
+                                  <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
+                                  <div className="flex flex-col leading-none">
+                                      <span className="text-xs font-bold text-slate-400 uppercase">Done</span>
+                                      <span className="text-base font-bold text-emerald-500">{completedFiles}</span>
+                                  </div>
+                              </div>
 
-                  <div className="hidden sm:block w-px h-4 bg-slate-700"></div>
+                              <button 
+                                onClick={handleExportZip}
+                                disabled={!files.some(f => f.status === ProcessingStatus.COMPLETED) || isExporting}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-lg border text-sm font-bold transition-all ${
+                                    !files.some(f => f.status === ProcessingStatus.COMPLETED) 
+                                    ? 'opacity-50 cursor-not-allowed border-slate-200 dark:border-white/10 text-slate-400' 
+                                    : 'border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/20'
+                                }`}
+                              >
+                                 {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                                 Export
+                              </button>
 
-                  <label className="flex items-center gap-2 cursor-pointer group px-2 select-none">
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${renameOnExport ? 'bg-indigo-500 border-indigo-500' : (isDarkMode ? 'border-slate-600 bg-slate-800' : 'border-slate-300 bg-slate-100')}`}>
-                          {renameOnExport && <CheckSquare size={10} className="text-white" />}
+                              <button onClick={handleClearAll} className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Clear All">
+                                 <Trash2 size={18} />
+                              </button>
+                           </div>
+                        </div>
                       </div>
-                      <input type="checkbox" className="hidden" checked={renameOnExport} onChange={e => setRenameOnExport(e.target.checked)} />
-                      <span className={`text-xs font-medium ${renameOnExport ? 'text-indigo-400' : (isDarkMode ? 'text-slate-400 group-hover:text-slate-300' : 'text-slate-500 group-hover:text-slate-700')}`}>Rename files</span>
-                  </label>
+                    )}
 
-                  <button 
-                    onClick={handleExportZip}
-                    disabled={!files.some(f => f.status === ProcessingStatus.COMPLETED) || isExporting}
-                    className={`text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors disabled:cursor-not-allowed min-w-[120px] justify-center ${!files.some(f => f.status === ProcessingStatus.COMPLETED) || isExporting ? 'text-slate-400 hover:bg-transparent' : 'text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10'}`}
-                  >
-                    {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-                    {isExporting ? 'Zipping...' : 'Export ZIP'}
-                  </button>
-                  
-                  <div className="hidden sm:block w-px h-4 bg-slate-700"></div>
-
-                  <button 
-                    onClick={handleClearAll}
-                    className="text-red-400 hover:text-red-500 text-sm flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
-                  >
-                    <Trash2 size={16} /> Clear All
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* List of Cards */}
-            <div className="space-y-6">
-              {filteredFiles.map(file => (
-                <MetadataCard 
-                  key={file.id} 
-                  item={file} 
-                  isSelected={selectedIds.has(file.id)}
-                  onToggleSelect={handleToggleSelect}
-                  onRemove={handleRemoveFile} 
-                  onRegenerate={handleRegenerate}
-                  onUpdateMetadata={handleUpdateMetadata}
-                  onAddTrending={handleAddTrending}
-                  apiKey={apiKey}
-                />
-              ))}
+                    {/* Metadata Cards */}
+                    <div className="flex flex-col gap-6 pb-24">
+                      {filteredFiles.map(file => (
+                        <MetadataCard 
+                          key={file.id} 
+                          item={file} 
+                          isSelected={selectedIds.has(file.id)}
+                          onToggleSelect={handleToggleSelect}
+                          onRemove={handleRemoveFile} 
+                          onRegenerate={handleRegenerate}
+                          onUpdateMetadata={handleUpdateMetadata}
+                          onAddTrending={handleAddTrending}
+                          apiKey={apiKey}
+                        />
+                      ))}
+                      {filteredFiles.length === 0 && files.length > 0 && (
+                          <div className="text-center py-20 text-slate-400 border-2 border-dashed border-slate-200 dark:border-gray-800 rounded-2xl">
+                              <Filter className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                              <p className="text-base font-medium">No files match the current filter.</p>
+                          </div>
+                      )}
+                    </div>
+                 </div>
             </div>
-          </>
+
+          </div>
         )}
       </main>
-      <footer className={`border-t py-8 mt-12 transition-colors ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
-         <div className="max-w-6xl mx-auto px-4 flex justify-between items-center text-sm">
-            <p className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>&copy; 2025 - 2030 StockMeta AI. Powered by Google Gemini.</p>
-            <div className="flex gap-4">
-               <button onClick={() => setView('about')} className={`transition-colors hover:underline ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}>About</button>
-               <a href="#" className={`transition-colors ${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}><Github size={18} /></a>
-            </div>
-         </div>
-      </footer>
     </div>
   );
 }

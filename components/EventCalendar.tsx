@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Calendar, ArrowLeft, UploadCloud, Tag, Globe, MapPin } from 'lucide-react';
 
@@ -271,46 +270,46 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
       {onBack && (
         <button 
           onClick={onBack}
-          className="mb-6 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-indigo-500 transition-colors font-medium"
+          className="mb-8 inline-flex items-center gap-2 text-base text-slate-400 hover:text-indigo-500 transition-colors font-medium"
         >
-          <ArrowLeft size={16} /> Back to Metadata
+          <ArrowLeft size={18} /> Back to Metadata
         </button>
       )}
 
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
+      <div className="text-center mb-10">
+        <h2 className="text-4xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
           Stock Photography Event Calendar
         </h2>
-        <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-400 text-lg mb-6">
+        <p className="max-w-3xl mx-auto text-slate-600 dark:text-slate-400 text-xl mb-8">
           Plan your shoots and uploads ahead of time. Stock agencies typically recommend uploading content 2-3 months before the actual event.
         </p>
 
         {/* Region Toggle */}
-        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl">
            <button
               onClick={() => setRegion('Global')}
-              className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-base font-bold transition-all ${
                  region === 'Global' 
                  ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' 
                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
            >
-              <Globe size={16} /> Global / US
+              <Globe size={18} /> Global / US
            </button>
            <button
               onClick={() => setRegion('India')}
-              className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-base font-bold transition-all ${
                  region === 'India' 
                  ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-sm' 
                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
            >
-              <MapPin size={16} /> India
+              <MapPin size={18} /> India
            </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {calendarData.map((data, index) => {
           const isIndia = region === 'India';
           const events = isIndia && data.indianEvents ? data.indianEvents : data.events;
@@ -326,28 +325,28 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
           return (
             <div 
               key={index} 
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col"
             >
               {/* Header */}
-              <div className="bg-slate-50 dark:bg-slate-950 p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200">{data.month}</h3>
-                <span className={`text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded ${focusColor}`}>
+              <div className="bg-slate-50 dark:bg-slate-950 p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200">{data.month}</h3>
+                <span className={`text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded ${focusColor}`}>
                   {focus}
                 </span>
               </div>
 
-              <div className="p-5 flex-1 flex flex-col gap-4">
+              <div className="p-6 flex-1 flex flex-col gap-6">
                 
                 {/* Events Section */}
                 <div>
-                  <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
-                    <Calendar size={12} />
+                  <div className="flex items-center gap-2 mb-3 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
+                    <Calendar size={14} />
                     {region} Events
                   </div>
-                  <ul className="text-sm text-slate-700 dark:text-slate-300 space-y-2">
+                  <ul className="text-base text-slate-700 dark:text-slate-300 space-y-2.5">
                     {events.map((event, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <span className={`shrink-0 font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                      <li key={i} className="flex items-center gap-3">
+                        <span className={`shrink-0 font-mono text-xs font-bold px-2 py-0.5 rounded border ${
                             isIndia 
                             ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 border-orange-100 dark:border-orange-800'
                             : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800'
@@ -361,21 +360,21 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
                 </div>
 
                 {/* Upload Deadline Section */}
-                <div className={`p-3 rounded-lg border ${
+                <div className={`p-4 rounded-xl border ${
                     isIndia 
                     ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'
                     : 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30'
                 }`}>
-                  <div className={`flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider ${
+                  <div className={`flex items-center gap-2 mb-3 text-xs font-bold uppercase tracking-wider ${
                       isIndia ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
                   }`}>
-                    <UploadCloud size={12} />
+                    <UploadCloud size={14} />
                     Shoot & Upload For:
                   </div>
-                  <ul className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                  <ul className="text-base text-slate-700 dark:text-slate-300 space-y-1.5">
                     {deadlines.map((deadline, i) => (
-                      <li key={i} className="flex items-start gap-2 font-medium">
-                        <span className={`block mt-1.5 w-1 h-1 rounded-full flex-shrink-0 ${
+                      <li key={i} className="flex items-start gap-2.5 font-medium">
+                        <span className={`block mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                             isIndia ? 'bg-amber-500' : 'bg-emerald-500'
                         }`}></span>
                         {deadline}
@@ -385,16 +384,16 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
                 </div>
 
                 {/* Keywords Section */}
-                <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2 mb-2 text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-wider">
-                    <Tag size={12} />
+                <div className="mt-auto pt-5 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 mb-3 text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-wider">
+                    <Tag size={14} />
                     {region} Keywords
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {keywords.map((kw, i) => (
                       <span 
                         key={i} 
-                        className="text-[10px] px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md"
+                        className="text-xs font-medium px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md"
                       >
                         {kw}
                       </span>
@@ -408,7 +407,7 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
         })}
       </div>
       
-      <div className="mt-12 text-center text-sm text-slate-500 dark:text-slate-400 p-6 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+      <div className="mt-14 text-center text-base text-slate-500 dark:text-slate-400 p-8 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 max-w-4xl mx-auto">
          <p>
            <strong>Pro Tip:</strong> {region === 'India' 
              ? "For Indian festivals like Diwali and Holi, content starts selling 1-2 months in advance locally, but upload 3 months early for global buyers." 

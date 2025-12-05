@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { UploadCloud, Sparkles, Copy, Check, Loader2, Image as ImageIcon, Trash2, ArrowLeft, Download, Type, RefreshCw, Palette, ChevronDown } from 'lucide-react';
 import { FileUploader } from './FileUploader';
@@ -205,43 +204,43 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
       {onBack && (
         <button 
           onClick={onBack}
-          className="mb-6 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-indigo-500 transition-colors font-medium"
+          className="mb-6 inline-flex items-center gap-2 text-base text-slate-400 hover:text-indigo-500 transition-colors font-medium"
         >
-          <ArrowLeft size={16} /> Back to Metadata
+          <ArrowLeft size={18} /> Back to Metadata
         </button>
       )}
 
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-500">
+      <div className="text-center mb-10">
+        <h2 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-500">
           AI Prompt Studio
         </h2>
-        <p className="max-w-2xl mx-auto text-slate-600 dark:text-slate-400 text-lg">
+        <p className="max-w-3xl mx-auto text-slate-600 dark:text-slate-400 text-xl">
           Generate high-quality prompts for Midjourney, Stable Diffusion, or Dall-E.
         </p>
       </div>
 
       {/* Mode Toggle */}
-      <div className="flex justify-center mb-8">
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+      <div className="flex justify-center mb-10">
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl">
               <button
                   onClick={() => setMode('REVERSE')}
-                  className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-base font-bold transition-all ${
                       mode === 'REVERSE' 
                       ? 'bg-white dark:bg-slate-700 text-pink-600 dark:text-pink-400 shadow-sm' 
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
               >
-                  <ImageIcon size={16} /> Image to Prompt
+                  <ImageIcon size={18} /> Image to Prompt
               </button>
               <button
                   onClick={() => setMode('EXPAND')}
-                  className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-base font-bold transition-all ${
                       mode === 'EXPAND' 
                       ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
               >
-                  <Type size={16} /> Text to Prompt
+                  <Type size={18} /> Text to Prompt
               </button>
           </div>
       </div>
@@ -249,12 +248,12 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
       {mode === 'REVERSE' ? (
         // --- REVERSE IMAGE UI ---
         <div>
-           <div className="mb-10">
+           <div className="mb-12">
                 <FileUploader onFilesSelected={handleFilesSelected} />
            </div>
 
             {items.length > 0 && (
-                <div className="flex flex-wrap md:flex-nowrap justify-between items-center gap-3 mb-6 sticky top-20 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div className="flex flex-wrap md:flex-nowrap justify-between items-center gap-4 mb-8 sticky top-24 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
                 
                 {/* Progress Bar */}
                 {isGenerating && (
@@ -270,9 +269,9 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
                     {items.filter(i => i.status === 'idle' || i.status === 'error').length > 0 && (
                     <button
                         onClick={handleGenerateAll}
-                        className="flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-medium transition-colors shadow-sm shadow-pink-500/20"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition-colors shadow-sm shadow-pink-500/20"
                     >
-                        <Sparkles size={16} />
+                        <Sparkles size={18} />
                         Generate All ({items.filter(i => i.status === 'idle' || i.status === 'error').length})
                     </button>
                     )}
@@ -282,51 +281,51 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
                     <button
                     onClick={handleExportCSV}
                     disabled={!items.some(i => i.status === 'completed')}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition-colors shadow-sm"
                     >
-                    <Download size={16} />
+                    <Download size={18} />
                     Export CSV
                     </button>
                     
                     <button
                     onClick={handleClearAll}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-200 dark:border-red-800/50"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg text-sm font-bold transition-colors border border-red-200 dark:border-red-800/50"
                     >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} />
                     Clear All
                     </button>
                 </div>
                 </div>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-8">
                 {items.map(item => (
                 <div 
                     key={item.id}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col md:flex-row"
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col md:flex-row"
                 >
-                    <div className="md:w-1/4 h-64 md:h-auto bg-slate-100 dark:bg-slate-950 relative group">
+                    <div className="md:w-1/4 h-80 md:h-auto bg-slate-100 dark:bg-slate-950 relative group">
                         <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
                         <button 
                             onClick={() => handleRemove(item.id)}
-                            className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-red-500 text-white rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                            className="absolute top-3 right-3 p-2.5 bg-black/50 hover:bg-red-500 text-white rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                         >
-                            <Trash2 size={16} />
+                            <Trash2 size={18} />
                         </button>
                     </div>
 
-                    <div className="md:w-3/4 p-6 flex flex-col">
-                        <div className="flex justify-between items-start mb-4">
+                    <div className="md:w-3/4 p-8 flex flex-col">
+                        <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-2">
-                            <ImageIcon size={18} className="text-pink-500" />
-                            <span className="font-semibold text-slate-700 dark:text-slate-200">Generated Prompt</span>
+                            <ImageIcon size={22} className="text-pink-500" />
+                            <span className="font-bold text-lg text-slate-700 dark:text-slate-200">Generated Prompt</span>
                             </div>
                             {item.status === 'completed' && (
                             <button 
                                 onClick={() => handleCopy(item.prompt, item.id)}
                                 className="text-slate-400 hover:text-indigo-500 transition-colors"
                             >
-                                {copiedId === item.id ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
+                                {copiedId === item.id ? <Check size={20} className="text-emerald-500" /> : <Copy size={20} />}
                             </button>
                             )}
                         </div>
@@ -334,38 +333,38 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
                         <div className="flex-1 relative">
                             {item.status === 'idle' && (
                             <div className="absolute inset-0 flex items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-900/50">
-                                <p className="text-sm">Ready to generate</p>
+                                <p className="text-base">Ready to generate</p>
                             </div>
                             )}
                             
                             {item.status === 'loading' && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-indigo-500 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-10 rounded-lg">
-                                <Loader2 size={32} className="animate-spin mb-2" />
-                                <p className="text-sm font-medium">Analyzing image...</p>
+                                <Loader2 size={40} className="animate-spin mb-3" />
+                                <p className="text-base font-bold">Analyzing image...</p>
                             </div>
                             )}
 
                             {item.status === 'error' && (
-                            <div className="absolute inset-0 flex items-center justify-center text-red-500 bg-red-50 dark:bg-red-900/10 rounded-lg p-4 text-center">
-                                <p className="text-sm">{item.error || "Generation failed"}</p>
+                            <div className="absolute inset-0 flex items-center justify-center text-red-500 bg-red-50 dark:bg-red-900/10 rounded-lg p-6 text-center">
+                                <p className="text-base">{item.error || "Generation failed"}</p>
                             </div>
                             )}
 
                             <textarea
                             readOnly
                             value={item.prompt}
-                            className="w-full h-full min-h-[120px] p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-pink-500/50 text-slate-700 dark:text-slate-300 leading-relaxed"
+                            className="w-full h-full min-h-[140px] p-5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-pink-500/50 text-slate-700 dark:text-slate-300 leading-relaxed text-base"
                             placeholder="The generated prompt will appear here..."
                             />
                         </div>
 
-                        <div className="mt-4 flex justify-end">
+                        <div className="mt-6 flex justify-end">
                             <button
                             onClick={() => handleGenerate(item.id)}
                             disabled={item.status === 'loading'}
-                            className="bg-pink-600 hover:bg-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-lg shadow-pink-500/20"
+                            className="bg-pink-600 hover:bg-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-colors shadow-lg shadow-pink-500/20"
                             >
-                            {item.status === 'completed' ? <RefreshCw size={16} /> : <Sparkles size={16} />}
+                            {item.status === 'completed' ? <RefreshCw size={18} /> : <Sparkles size={18} />}
                             {item.status === 'completed' ? 'Regenerate' : 'Generate Prompt'}
                             </button>
                         </div>
@@ -374,66 +373,66 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
                 ))}
 
                 {items.length === 0 && (
-                <div className="text-center py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                    <Sparkles className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-700 mb-3" />
-                    <p className="text-slate-500 dark:text-slate-500">Upload images to get started</p>
+                <div className="text-center py-16 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                    <Sparkles className="mx-auto h-14 w-14 text-slate-300 dark:text-slate-700 mb-4" />
+                    <p className="text-slate-500 dark:text-slate-500 text-lg">Upload images to get started</p>
                 </div>
                 )}
             </div>
         </div>
       ) : (
         // --- TEXT EXPANSION UI ---
-        <div className="max-w-4xl mx-auto">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-8">
-                <div className="flex flex-col md:flex-row gap-6">
+        <div className="max-w-5xl mx-auto">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm mb-10">
+                <div className="flex flex-col md:flex-row gap-8">
                     <div className="flex-1">
-                        <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
+                        <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
                             Concept / Short Description
                         </label>
                         <textarea 
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
                             placeholder="e.g. A futuristic cyberpunk city in rain, neon lights..."
-                            className="w-full h-40 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
+                            className="w-full h-48 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-5 py-4 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none text-base"
                         />
                     </div>
-                    <div className="md:w-72 flex flex-col gap-5">
+                    <div className="md:w-80 flex flex-col gap-6">
                          <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
+                            <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
                                 Number of Variations
                             </label>
                             <div className="relative">
                                 <select
                                     value={variationCount}
                                     onChange={(e) => setVariationCount(Number(e.target.value))}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2.5 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none appearance-none cursor-pointer text-sm font-medium"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none appearance-none cursor-pointer text-base font-medium"
                                 >
                                     {[1, 3, 5, 10].map(num => (
                                         <option key={num} value={num}>{num} Variations</option>
                                     ))}
                                 </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                    <ChevronDown size={16} />
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <ChevronDown size={20} />
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                            <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400 flex items-center gap-1">
                                 Image Style / Type
                             </label>
                             <div className="relative">
                                 <select
                                     value={selectedImageType}
                                     onChange={(e) => setSelectedImageType(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2.5 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none appearance-none cursor-pointer text-sm font-medium"
+                                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-900 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none appearance-none cursor-pointer text-base font-medium"
                                 >
                                     {IMAGE_TYPES.map(type => (
                                         <option key={type} value={type}>{type}</option>
                                     ))}
                                 </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                    <ChevronDown size={16} />
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <ChevronDown size={20} />
                                 </div>
                             </div>
                         </div>
@@ -441,9 +440,9 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
                         <button 
                             onClick={handleExpandText}
                             disabled={!inputText.trim()}
-                            className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-500/20 py-3 mt-auto"
+                            className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-500/20 py-3 mt-auto text-base"
                         >
-                            <Sparkles size={18} />
+                            <Sparkles size={20} />
                             Generate Prompts
                         </button>
                     </div>
@@ -451,64 +450,64 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
             </div>
 
             {expansionItems.length > 0 && (
-                <div className="flex justify-end gap-3 mb-6">
+                <div className="flex justify-end gap-3 mb-8">
                      <button
                         onClick={handleExportExpandedCSV}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition-colors shadow-sm"
                     >
-                        <Download size={16} />
+                        <Download size={18} />
                         Export CSV
                     </button>
                     <button
                         onClick={handleClearExpanded}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors border border-red-200 dark:border-red-800/50"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg text-sm font-bold transition-colors border border-red-200 dark:border-red-800/50"
                     >
-                        <Trash2 size={16} />
+                        <Trash2 size={18} />
                         Clear All
                     </button>
                 </div>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-8">
                 {expansionItems.map(item => (
-                    <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                        <div className="bg-slate-50 dark:bg-slate-950 px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                    <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="bg-slate-50 dark:bg-slate-950 px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <span className="px-3 py-1 rounded text-xs font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
                                     {item.imageType}
                                 </span>
-                                <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-md" title={item.originalText}>
+                                <h3 className="text-base font-bold text-slate-900 dark:text-white truncate max-w-lg" title={item.originalText}>
                                     "{item.originalText}"
                                 </h3>
                             </div>
                             <button onClick={() => handleRemoveExpanded(item.id)} className="text-slate-400 hover:text-red-500">
-                                <Trash2 size={16} />
+                                <Trash2 size={18} />
                             </button>
                         </div>
-                        <div className="p-6">
+                        <div className="p-8">
                             {item.status === 'loading' && (
-                                <div className="flex items-center justify-center py-8 text-indigo-500 gap-3">
-                                    <Loader2 size={24} className="animate-spin" />
-                                    <span className="font-medium">Crafting prompts...</span>
+                                <div className="flex items-center justify-center py-10 text-indigo-500 gap-3">
+                                    <Loader2 size={32} className="animate-spin" />
+                                    <span className="font-bold text-lg">Crafting prompts...</span>
                                 </div>
                             )}
 
                             {item.status === 'error' && (
-                                <div className="p-4 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-lg text-sm text-center">
+                                <div className="p-5 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-lg text-base text-center">
                                     {item.error || "Failed to generate prompts"}
                                 </div>
                             )}
 
                             {item.status === 'completed' && (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     {item.generatedPrompts.map((prompt, idx) => (
-                                        <div key={idx} className="group relative bg-slate-50 dark:bg-slate-950 p-4 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
-                                            <p className="text-sm text-slate-700 dark:text-slate-300 pr-8">{prompt}</p>
+                                        <div key={idx} className="group relative bg-slate-50 dark:bg-slate-950 p-5 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
+                                            <p className="text-base text-slate-700 dark:text-slate-300 pr-10 leading-relaxed">{prompt}</p>
                                             <button 
                                                 onClick={() => handleCopy(prompt, `${item.id}-${idx}`)}
-                                                className="absolute top-3 right-3 text-slate-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                className="absolute top-4 right-4 text-slate-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-all"
                                             >
-                                                {copiedId === `${item.id}-${idx}` ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                                                {copiedId === `${item.id}-${idx}` ? <Check size={20} className="text-emerald-500" /> : <Copy size={20} />}
                                             </button>
                                         </div>
                                     ))}

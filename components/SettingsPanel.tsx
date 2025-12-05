@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Info, Settings, Type, AlignLeft, Hash } from 'lucide-react';
+import { ChevronDown, ChevronUp, Sliders, Type, AlignLeft, Hash, Info, ToggleRight, Check, Settings2, Sparkles, AlertTriangle } from 'lucide-react';
 import { GenerationSettings } from '../types';
 
 interface SettingsPanelProps {
@@ -9,7 +8,7 @@ interface SettingsPanelProps {
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettingsChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const handleToggle = (field: keyof GenerationSettings) => {
     onSettingsChange({
@@ -25,268 +24,174 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettin
     });
   };
 
-  // Helper to safely update min/max ranges
   const handleRangeChange = (type: 'title' | 'desc' | 'kw', bound: 'min' | 'max', value: string) => {
-      const val = parseInt(value) || 0;
+      let val = parseInt(value) || 0;
+      
       if (type === 'title') {
+          if (val < 0) val = 0;
           if (bound === 'min') handleChange('titleWordCountMin', Math.min(val, settings.titleWordCountMax));
           else handleChange('titleWordCountMax', Math.max(val, settings.titleWordCountMin));
       } else if (type === 'desc') {
+          if (val < 0) val = 0;
           if (bound === 'min') handleChange('descriptionWordCountMin', Math.min(val, settings.descriptionWordCountMax));
           else handleChange('descriptionWordCountMax', Math.max(val, settings.descriptionWordCountMin));
       } else if (type === 'kw') {
+          if (val < 0) val = 0;
           if (bound === 'min') handleChange('keywordCountMin', Math.min(val, settings.keywordCountMax));
           else handleChange('keywordCountMax', Math.max(val, settings.keywordCountMin));
       }
   };
 
   return (
-    <div className="w-full mb-6">
+    <div className="w-full bg-white/60 backdrop-blur-md dark:bg-[#0f1218] border border-slate-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden transition-all hover:shadow-md hover:shadow-slate-200/50 dark:hover:shadow-none">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-t-xl transition-colors font-semibold text-sm shadow-md"
+        className="w-full flex items-center justify-between p-6 text-left hover:bg-white/50 dark:hover:bg-white/5 transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <Settings size={16} />
-          Metadata Customization & Settings
+        <div className="flex items-center gap-4">
+          <div className="p-2.5 bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 rounded-lg">
+             <Sliders size={20} />
+          </div>
+          <div>
+              <h3 className="font-bold text-slate-900 dark:text-gray-100 text-base">Configuration</h3>
+              <p className="text-sm text-slate-500">Global logic settings</p>
+          </div>
         </div>
-        {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        <div className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
+           <ChevronDown size={18} className="text-slate-400" />
+        </div>
       </button>
 
       {isOpen && (
-        <div className="bg-slate-900 border border-slate-700 rounded-b-xl p-4 space-y-6 animate-in slide-in-from-top-2 shadow-xl">
+        <div className="p-6 pt-2 space-y-8 border-t border-slate-100 dark:border-gray-800">
           
-          {/* --- COUNTS & LIMITS SECTION --- */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 border-b border-slate-800">
+          {/* Output Limits */}
+          <div className="space-y-4">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+                Word Count Limits
+              </h4>
               
-              {/* Title Words */}
-              <div className="bg-slate-800/50 p-3 rounded-lg">
-                  <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider mb-2">
-                      <Type size={12} /> Title Words
-                  </div>
-                  <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                          <label className="block text-[10px] text-slate-500 mb-1">Min (5-25)</label>
-                          <input 
-                              type="number" 
-                              min="5" max="25"
-                              value={settings.titleWordCountMin}
-                              onChange={(e) => handleRangeChange('title', 'min', e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white text-center focus:border-orange-500 outline-none"
-                          />
+              <div className="space-y-4">
+                  {/* Title */}
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-slate-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-colors bg-white/50 dark:bg-transparent">
+                      <div className="flex items-center gap-3 text-slate-700 dark:text-gray-300 text-sm font-bold">
+                          <Type size={16} className="text-slate-400" /> Title
                       </div>
-                      <span className="text-slate-600 mt-4">-</span>
-                      <div className="flex-1">
-                          <label className="block text-[10px] text-slate-500 mb-1">Max (5-25)</label>
-                          <input 
-                              type="number" 
-                              min="5" max="25"
-                              value={settings.titleWordCountMax}
-                              onChange={(e) => handleRangeChange('title', 'max', e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white text-center focus:border-orange-500 outline-none"
-                          />
+                      <div className="flex items-center gap-2">
+                          <input type="number" min="8" max="25" value={settings.titleWordCountMin} onChange={(e) => handleRangeChange('title', 'min', e.target.value)} className="w-12 text-center bg-slate-50 dark:bg-gray-800 rounded py-1.5 text-sm font-medium text-slate-800 dark:text-gray-200 focus:ring-1 focus:ring-indigo-500 outline-none" />
+                          <span className="text-slate-400 text-xs">-</span>
+                          <input type="number" min="8" max="25" value={settings.titleWordCountMax} onChange={(e) => handleRangeChange('title', 'max', e.target.value)} className="w-12 text-center bg-slate-50 dark:bg-gray-800 rounded py-1.5 text-sm font-medium text-slate-800 dark:text-gray-200 focus:ring-1 focus:ring-indigo-500 outline-none" />
                       </div>
                   </div>
-              </div>
 
-              {/* Description Words */}
-              <div className="bg-slate-800/50 p-3 rounded-lg">
-                  <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider mb-2">
-                      <AlignLeft size={12} /> Description Words
-                  </div>
-                  <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                          <label className="block text-[10px] text-slate-500 mb-1">Min (1-40)</label>
-                          <input 
-                              type="number" 
-                              min="1" max="40"
-                              value={settings.descriptionWordCountMin}
-                              onChange={(e) => handleRangeChange('desc', 'min', e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white text-center focus:border-orange-500 outline-none"
-                          />
+                  {/* Description */}
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-slate-100 dark:border-gray-800 hover:border-purple-200 dark:hover:border-purple-900/50 transition-colors bg-white/50 dark:bg-transparent">
+                      <div className="flex items-center gap-3 text-slate-700 dark:text-gray-300 text-sm font-bold">
+                          <AlignLeft size={16} className="text-slate-400" /> Desc
                       </div>
-                      <span className="text-slate-600 mt-4">-</span>
-                      <div className="flex-1">
-                          <label className="block text-[10px] text-slate-500 mb-1">Max (1-40)</label>
-                          <input 
-                              type="number" 
-                              min="1" max="40"
-                              value={settings.descriptionWordCountMax}
-                              onChange={(e) => handleRangeChange('desc', 'max', e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white text-center focus:border-orange-500 outline-none"
-                          />
+                      <div className="flex items-center gap-2">
+                          <input type="number" min="8" max="40" value={settings.descriptionWordCountMin} onChange={(e) => handleRangeChange('desc', 'min', e.target.value)} className="w-12 text-center bg-slate-50 dark:bg-gray-800 rounded py-1.5 text-sm font-medium text-slate-800 dark:text-gray-200 focus:ring-1 focus:ring-purple-500 outline-none" />
+                          <span className="text-slate-400 text-xs">-</span>
+                          <input type="number" min="8" max="40" value={settings.descriptionWordCountMax} onChange={(e) => handleRangeChange('desc', 'max', e.target.value)} className="w-12 text-center bg-slate-50 dark:bg-gray-800 rounded py-1.5 text-sm font-medium text-slate-800 dark:text-gray-200 focus:ring-1 focus:ring-purple-500 outline-none" />
                       </div>
                   </div>
-              </div>
 
-              {/* Keyword Count */}
-              <div className="bg-slate-800/50 p-3 rounded-lg">
-                  <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider mb-2">
-                      <Hash size={12} /> Keyword Count
-                  </div>
-                  <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                          <label className="block text-[10px] text-slate-500 mb-1">Min (1-50)</label>
-                          <input 
-                              type="number" 
-                              min="1" max="50"
-                              value={settings.keywordCountMin}
-                              onChange={(e) => handleRangeChange('kw', 'min', e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white text-center focus:border-orange-500 outline-none"
-                          />
+                  {/* Keywords */}
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-slate-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-colors bg-white/50 dark:bg-transparent">
+                      <div className="flex items-center gap-3 text-slate-700 dark:text-gray-300 text-sm font-bold">
+                          <Hash size={16} className="text-slate-400" /> Keywords
                       </div>
-                      <span className="text-slate-600 mt-4">-</span>
-                      <div className="flex-1">
-                          <label className="block text-[10px] text-slate-500 mb-1">Max (1-50)</label>
-                          <input 
-                              type="number" 
-                              min="1" max="50"
-                              value={settings.keywordCountMax}
-                              onChange={(e) => handleRangeChange('kw', 'max', e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white text-center focus:border-orange-500 outline-none"
-                          />
+                      <div className="flex items-center gap-2">
+                          <input type="number" min="25" max="50" value={settings.keywordCountMin} onChange={(e) => handleRangeChange('kw', 'min', e.target.value)} className="w-12 text-center bg-slate-50 dark:bg-gray-800 rounded py-1.5 text-sm font-medium text-slate-800 dark:text-gray-200 focus:ring-1 focus:ring-emerald-500 outline-none" />
+                          <span className="text-slate-400 text-xs">-</span>
+                          <input type="number" min="25" max="50" value={settings.keywordCountMax} onChange={(e) => handleRangeChange('kw', 'max', e.target.value)} className="w-12 text-center bg-slate-50 dark:bg-gray-800 rounded py-1.5 text-sm font-medium text-slate-800 dark:text-gray-200 focus:ring-1 focus:ring-emerald-500 outline-none" />
                       </div>
                   </div>
               </div>
           </div>
 
-          {/* --- TOGGLES SECTION --- */}
+          <div className="h-px bg-slate-100 dark:bg-gray-800" />
+
+          {/* Toggles */}
           <div className="space-y-4">
-            {/* SILHOUETTE */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300 text-sm font-medium">
-                SILHOUETTE
-                <div className="group relative">
-                    <Info size={14} className="text-slate-500 cursor-help" />
-                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-black/90 text-white text-xs p-2 rounded hidden group-hover:block z-50">
-                    Force detection of silhouette style metadata.
-                    </div>
-                </div>
-                </div>
-                <button 
-                onClick={() => handleToggle('silhouette')}
-                className={`w-10 h-5 rounded-full transition-colors relative ${settings.silhouette ? 'bg-orange-500' : 'bg-slate-700'}`}
-                >
-                <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${settings.silhouette ? 'left-6' : 'left-1'}`} />
-                </button>
-            </div>
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+               Detection Logic
+            </h4>
 
-            {/* CUSTOM PROMPT */}
-            <div>
-                <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-slate-300 text-sm font-medium">
-                    CUSTOM PROMPT
-                    <div className="group relative">
-                    <Info size={14} className="text-slate-500 cursor-help" />
-                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-black/90 text-white text-xs p-2 rounded hidden group-hover:block z-50">
-                        Add custom instructions to the AI.
+            {[
+                { key: 'silhouette', label: 'Silhouette', desc: 'Detect shadows' },
+                { key: 'whiteBackground', label: 'White BG', desc: 'Isolated' },
+                { key: 'transparentBackground', label: 'Transparent BG', desc: 'Isolated PNG' },
+                { key: 'singleWordKeywords', label: 'Single Words', desc: 'No phrases' }
+            ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between group cursor-pointer p-3 -mx-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg transition-colors" onClick={() => handleToggle(item.key as keyof GenerationSettings)}>
+                    <div>
+                        <p className="text-sm font-bold text-slate-700 dark:text-gray-300">{item.label}</p>
+                        <p className="text-xs text-slate-400">{item.desc}</p>
                     </div>
+                    <div className={`w-11 h-6 rounded-full transition-colors relative ${
+                            settings[item.key as keyof GenerationSettings] 
+                            ? 'bg-indigo-600' 
+                            : 'bg-slate-200 dark:bg-gray-700'
+                        }`}
+                    >
+                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-200 ${
+                            settings[item.key as keyof GenerationSettings] ? 'left-6' : 'left-1'
+                        }`} />
                     </div>
                 </div>
-                <button 
-                    onClick={() => handleToggle('customPromptEnabled')}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${settings.customPromptEnabled ? 'bg-orange-500' : 'bg-slate-700'}`}
-                >
-                    <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${settings.customPromptEnabled ? 'left-6' : 'left-1'}`} />
-                </button>
-                </div>
-                {settings.customPromptEnabled && (
-                <textarea 
-                    value={settings.customPromptText}
-                    onChange={(e) => handleChange('customPromptText', e.target.value)}
-                    placeholder="e.g. Focus on the emotional aspect..."
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
-                    rows={2}
-                />
-                )}
-            </div>
+            ))}
+          </div>
 
-            {/* White Background */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300 text-sm font-medium">
-                White Background
-                <div className="group relative">
-                    <Info size={14} className="text-slate-500 cursor-help" />
-                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-black/90 text-white text-xs p-2 rounded hidden group-hover:block z-50">
-                    Tag as 'Isolated on White Background'.
+          <div className="h-px bg-slate-100 dark:bg-gray-800" />
+          
+          {/* Advanced */}
+          <div className="space-y-6">
+               {/* Custom Prompt */}
+               <div>
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-bold text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                            <Settings2 size={16} /> Custom Prompt
+                        </span>
+                        <div 
+                            onClick={() => handleToggle('customPromptEnabled')}
+                            className={`w-10 h-5 rounded-full cursor-pointer transition-colors relative ${settings.customPromptEnabled ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-gray-700'}`}
+                        >
+                            <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-all ${settings.customPromptEnabled ? 'left-5.5' : 'left-0.5'}`} />
+                        </div>
                     </div>
-                </div>
-                </div>
-                <button 
-                onClick={() => handleToggle('whiteBackground')}
-                className={`w-10 h-5 rounded-full transition-colors relative ${settings.whiteBackground ? 'bg-orange-500' : 'bg-slate-700'}`}
-                >
-                <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${settings.whiteBackground ? 'left-6' : 'left-1'}`} />
-                </button>
-            </div>
+                    {settings.customPromptEnabled && (
+                        <textarea
+                            value={settings.customPromptText}
+                            onChange={(e) => handleChange('customPromptText', e.target.value)}
+                            placeholder="Add extra instructions..."
+                            className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg p-3 text-sm text-slate-700 dark:text-gray-300 focus:ring-1 focus:ring-indigo-500 outline-none resize-none h-24 animate-in fade-in"
+                        />
+                    )}
+               </div>
 
-            {/* Transparent Background */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300 text-sm font-medium">
-                Transparent Background
-                <div className="group relative">
-                    <Info size={14} className="text-slate-500 cursor-help" />
-                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-black/90 text-white text-xs p-2 rounded hidden group-hover:block z-50">
-                    Force 'Isolated on Transparent Background'.
+               {/* Prohibited Words */}
+               <div>
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-bold text-slate-700 dark:text-gray-300 flex items-center gap-2">
+                            <AlertTriangle size={16} /> Negative Words
+                        </span>
+                        <div 
+                            onClick={() => handleToggle('prohibitedWordsEnabled')}
+                            className={`w-10 h-5 rounded-full cursor-pointer transition-colors relative ${settings.prohibitedWordsEnabled ? 'bg-red-500' : 'bg-slate-200 dark:bg-gray-700'}`}
+                        >
+                            <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-all ${settings.prohibitedWordsEnabled ? 'left-5.5' : 'left-0.5'}`} />
+                        </div>
                     </div>
-                </div>
-                </div>
-                <button 
-                onClick={() => handleToggle('transparentBackground')}
-                className={`w-10 h-5 rounded-full transition-colors relative ${settings.transparentBackground ? 'bg-orange-500' : 'bg-slate-700'}`}
-                >
-                <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${settings.transparentBackground ? 'left-6' : 'left-1'}`} />
-                </button>
-            </div>
-
-            {/* PROHIBITED WORDS */}
-            <div>
-                <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-slate-300 text-sm font-medium">
-                    PROHIBITED WORDS
-                    <div className="group relative">
-                    <Info size={14} className="text-slate-500 cursor-help" />
-                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-black/90 text-white text-xs p-2 rounded hidden group-hover:block z-50">
-                        Exclude these words from metadata.
-                    </div>
-                    </div>
-                </div>
-                <button 
-                    onClick={() => handleToggle('prohibitedWordsEnabled')}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${settings.prohibitedWordsEnabled ? 'bg-orange-500' : 'bg-slate-700'}`}
-                >
-                    <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${settings.prohibitedWordsEnabled ? 'left-6' : 'left-1'}`} />
-                </button>
-                </div>
-                {settings.prohibitedWordsEnabled && (
-                <textarea 
-                    value={settings.prohibitedWordsText}
-                    onChange={(e) => handleChange('prohibitedWordsText', e.target.value)}
-                    placeholder="e.g. trademark, brand, logo..."
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
-                    rows={2}
-                />
-                )}
-            </div>
-
-            {/* SINGLE WORD KEYWORDS */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-300 text-sm font-medium">
-                SINGLE WORD KEYWORDS
-                <div className="group relative">
-                    <Info size={14} className="text-slate-500 cursor-help" />
-                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-black/90 text-white text-xs p-2 rounded hidden group-hover:block z-50">
-                    Restrict all keywords to single words (no phrases).
-                    </div>
-                </div>
-                </div>
-                <button 
-                onClick={() => handleToggle('singleWordKeywords')}
-                className={`w-10 h-5 rounded-full transition-colors relative ${settings.singleWordKeywords ? 'bg-orange-500' : 'bg-slate-700'}`}
-                >
-                <div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${settings.singleWordKeywords ? 'left-6' : 'left-1'}`} />
-                </button>
-            </div>
+                    {settings.prohibitedWordsEnabled && (
+                        <textarea
+                            value={settings.prohibitedWordsText}
+                            onChange={(e) => handleChange('prohibitedWordsText', e.target.value)}
+                            placeholder="Words to avoid..."
+                            className="w-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-500/20 rounded-lg p-3 text-sm text-slate-700 dark:text-gray-300 focus:ring-1 focus:ring-red-500 outline-none resize-none h-24 animate-in fade-in placeholder:text-red-300"
+                        />
+                    )}
+               </div>
           </div>
 
         </div>

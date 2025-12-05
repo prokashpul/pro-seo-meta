@@ -68,25 +68,25 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="p-6">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-8">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Bulk Edit</h3>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Bulk Edit</h3>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
-              <X size={20} />
+              <X size={24} />
             </button>
           </div>
 
-          <p className="text-slate-500 dark:text-slate-400 mb-6 text-sm">
+          <p className="text-slate-500 dark:text-slate-400 mb-8 text-base">
             Applying changes to <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{selectedCount}</span> selected items.
           </p>
           
           {/* Field Tabs */}
-          <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-6">
+          <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
             <button
                 type="button"
                 onClick={() => handleFieldChange('keywords')}
-                className={`flex-1 py-2 text-xs sm:text-sm font-medium rounded-md transition-all ${
+                className={`flex-1 py-2.5 text-sm sm:text-base font-bold rounded-lg transition-all ${
                     field === 'keywords' 
                     ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
@@ -97,7 +97,7 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
             <button
                 type="button"
                 onClick={() => handleFieldChange('title')}
-                className={`flex-1 py-2 text-xs sm:text-sm font-medium rounded-md transition-all ${
+                className={`flex-1 py-2.5 text-sm sm:text-base font-bold rounded-lg transition-all ${
                     field === 'title' 
                     ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
@@ -108,7 +108,7 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
             <button
                 type="button"
                 onClick={() => handleFieldChange('description')}
-                className={`flex-1 py-2 text-xs sm:text-sm font-medium rounded-md transition-all ${
+                className={`flex-1 py-2.5 text-sm sm:text-base font-bold rounded-lg transition-all ${
                     field === 'description' 
                     ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
@@ -118,57 +118,57 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
             </button>
           </div>
 
-          <div className="space-y-4 mb-6">
+          <div className="space-y-6 mb-8">
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg sm:flex sm:flex-wrap justify-center">
+            <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl sm:flex sm:flex-wrap justify-center">
               {field === 'keywords' ? (
                 <>
                     <button
                         type="button"
                         onClick={() => setAction('ADD')}
-                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                         action === 'ADD' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
                     >
-                        <Plus size={14} /> Add
+                        <Plus size={16} /> Add
                     </button>
                     <button
                         type="button"
                         onClick={() => setAction('REMOVE')}
-                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                         action === 'REMOVE' ? 'bg-amber-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
                     >
-                        <Minus size={14} /> Remove
+                        <Minus size={16} /> Remove
                     </button>
                     <button
                         type="button"
                         onClick={() => setAction('REPLACE_ALL')}
-                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                         action === 'REPLACE_ALL' ? 'bg-emerald-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
                         title="Replace entire list"
                     >
-                        <RefreshCcw size={14} /> Set
+                        <RefreshCcw size={16} /> Set
                     </button>
                     <button
                         type="button"
                         onClick={() => setAction('REPLACE_TEXT')}
-                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                         action === 'REPLACE_TEXT' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
                         title="Find & Replace word"
                     >
-                        <Replace size={14} /> Replace
+                        <Replace size={16} /> Replace
                     </button>
                     <button
                         type="button"
                         onClick={() => setAction('CLEAR_ALL')}
-                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                         action === 'CLEAR_ALL' ? 'bg-red-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
                     >
-                        <Trash2 size={14} /> Clear
+                        <Trash2 size={16} /> Clear
                     </button>
                 </>
               ) : (
@@ -176,53 +176,53 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                     <button
                         type="button"
                         onClick={() => setAction('REPLACE_ALL')}
-                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                         action === 'REPLACE_ALL' ? 'bg-emerald-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
                         title="Set Exact Text"
                     >
-                        <Type size={14} /> Set
+                        <Type size={16} /> Set
                     </button>
                     <button
                         type="button"
                         onClick={() => setAction('REPLACE_TEXT')}
-                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                         action === 'REPLACE_TEXT' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
                         title="Find and Replace"
                     >
-                        <Replace size={14} /> Replace
+                        <Replace size={16} /> Replace
                     </button>
                     <button
                         type="button"
                         onClick={() => setAction('APPEND')}
-                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                         action === 'APPEND' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
                         title="Add to end"
                     >
-                        <ArrowRight size={14} /> Append
+                        <ArrowRight size={16} /> Append
                     </button>
                     <button
                         type="button"
                         onClick={() => setAction('PREPEND')}
-                        className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                        className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                         action === 'PREPEND' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                         } flex-1`}
                         title="Add to start"
                     >
-                        <ArrowLeft size={14} /> Prepend
+                        <ArrowLeft size={16} /> Prepend
                     </button>
                     {field === 'title' && (
                         <button
                             type="button"
                             onClick={() => setAction('REMOVE')}
-                            className={`py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                            className={`py-2 px-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
                             action === 'REMOVE' ? 'bg-amber-600 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                             } flex-1`}
                             title="Remove specific text"
                         >
-                            <Eraser size={14} /> Remove
+                            <Eraser size={16} /> Remove
                         </button>
                     )}
                 </>
@@ -230,14 +230,14 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
             </div>
 
             {action === 'CLEAR_ALL' && field === 'keywords' ? (
-               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 text-center animate-in fade-in">
-                 <Trash2 size={32} className="mx-auto text-red-500 dark:text-red-400 mb-3" />
-                 <p className="text-red-600 dark:text-red-200 text-sm font-medium">
+               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-8 text-center animate-in fade-in">
+                 <Trash2 size={40} className="mx-auto text-red-500 dark:text-red-400 mb-4" />
+                 <p className="text-red-600 dark:text-red-200 text-base font-medium">
                    Are you sure? This will remove all keywords from the selected images.
                  </p>
                </div>
             ) : action === 'REPLACE_TEXT' ? (
-                <div className="space-y-3 animate-in fade-in">
+                <div className="space-y-4 animate-in fade-in">
                      <div>
                         <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
                           Find Word/Phrase
@@ -245,12 +245,12 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                         <input
                             value={findValue}
                             onChange={(e) => setFindValue(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-slate-200 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-3 text-slate-900 dark:text-slate-200 text-base focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
                             placeholder="Word to find..."
                         />
                      </div>
                      <div className="flex justify-center">
-                         <ArrowRight className="text-slate-400 rotate-90" size={16} />
+                         <ArrowRight className="text-slate-400 rotate-90" size={20} />
                      </div>
                      <div>
                         <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-500 dark:text-slate-400">
@@ -259,7 +259,7 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                         <input
                             value={replaceValue}
                             onChange={(e) => setReplaceValue(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-slate-200 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-3 text-slate-900 dark:text-slate-200 text-base focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-slate-400 dark:placeholder-slate-500"
                             placeholder="Replacement text..."
                         />
                      </div>
@@ -273,7 +273,7 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                     <textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-slate-200 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none h-32 placeholder-slate-400 dark:placeholder-slate-500"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-slate-200 text-base focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none h-40 placeholder-slate-400 dark:placeholder-slate-500"
                     placeholder={
                         action === 'REMOVE' 
                         ? "Enter keywords to remove from selected items..." 
@@ -286,7 +286,7 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
                     <textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-slate-200 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none h-24 placeholder-slate-400 dark:placeholder-slate-500"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-slate-200 text-base focus:ring-1 focus:ring-indigo-500 focus:outline-none resize-none h-32 placeholder-slate-400 dark:placeholder-slate-500"
                     placeholder={
                          action === 'REPLACE_ALL' 
                             ? `Set this ${field} for all selected items...` 
@@ -302,16 +302,16 @@ export const BulkKeywordModal: React.FC<BulkKeywordModalProps> = ({ isOpen, onCl
             )}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm transition-colors"
+              className="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-base transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
-              className={`flex-1 py-2.5 rounded-lg text-white font-medium text-sm transition-colors ${
+              className={`flex-1 py-3 rounded-xl text-white font-bold text-base transition-colors ${
                 action === 'CLEAR_ALL' || (field === 'title' && action === 'REMOVE')
                   ? 'bg-amber-600 hover:bg-amber-500' 
                   : 'bg-indigo-600 hover:bg-indigo-500'
