@@ -1,3 +1,4 @@
+
 export enum ProcessingStatus {
   IDLE = 'IDLE',
   UPLOADING = 'UPLOADING',
@@ -53,4 +54,23 @@ export interface ImageGenItem {
     guidanceScale?: number;
     seed?: number;
   };
+}
+
+export interface GenerationSettings {
+  silhouette: boolean;
+  whiteBackground: boolean;
+  transparentBackground: boolean;
+  singleWordKeywords: boolean;
+  customPromptEnabled: boolean;
+  customPromptText: string;
+  prohibitedWordsEnabled: boolean;
+  prohibitedWordsText: string;
+  
+  // Customization Ranges
+  titleWordCountMin: number;
+  titleWordCountMax: number;
+  descriptionWordCountMin: number;
+  descriptionWordCountMax: number;
+  keywordCountMin: number;
+  keywordCountMax: number;
 }
