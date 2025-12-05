@@ -658,7 +658,7 @@ function App() {
             {/* Main Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                  {/* Left Panel: Settings (3 cols) */}
-                 <div className="lg:col-span-3 order-2 lg:order-1 space-y-6 lg:sticky lg:top-28">
+                 <div className="lg:col-span-3 order-2 lg:order-1 space-y-6">
                     <SettingsPanel settings={generationSettings} onSettingsChange={setGenerationSettings} />
                  </div>
                  
