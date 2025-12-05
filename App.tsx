@@ -668,7 +668,7 @@ function App() {
                     
                     {/* Action Bar */}
                     {files.length > 0 && (
-                      <div className={`sticky top-24 z-40 rounded-xl border shadow-xl shadow-slate-200/50 dark:shadow-black/20 transition-all overflow-hidden ${
+                      <div className={`rounded-xl border shadow-xl shadow-slate-200/50 dark:shadow-black/20 transition-all overflow-hidden ${
                         isDarkMode 
                           ? 'bg-[#111827] border-white/10' 
                           : 'bg-white/90 border-white/60 backdrop-blur-md'
