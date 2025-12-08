@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { UploadCloud, Sparkles, Copy, Check, Loader2, Image as ImageIcon, Trash2, ArrowLeft, Download, Type, RefreshCw, Palette, ChevronDown } from 'lucide-react';
 import { FileUploader } from './FileUploader';
@@ -40,6 +41,7 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
   
   // Reverse Image Mode State
   const [items, setItems] = useState<PromptItem[]>([]);
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   
   // Text Expansion Mode State
   const [inputText, setInputText] = useState('');
@@ -95,15 +97,32 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
     }
   };
 
-  const handleGenerateAll = () => {
+  const handleGenerateAll = async () => {
     if (!apiKey) {
       alert("Please add your API Key in the settings first.");
       return;
     }
+    
+    if (isGeneratingAll) return;
+
     const pendingItems = items.filter(i => i.status === 'idle' || i.status === 'error');
-    pendingItems.forEach(item => {
-        handleGenerate(item.id);
-    });
+    if (pendingItems.length === 0) return;
+
+    setIsGeneratingAll(true);
+
+    // Process sequentially to respect rate limits
+    for (const item of pendingItems) {
+        // Double check item still exists (wasn't deleted while running)
+        if (!items.find(i => i.id === item.id)) continue;
+        
+        await handleGenerate(item.id);
+        
+        // Add a delay between requests to prevent 429 Quota errors
+        // 2 seconds buffer
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    setIsGeneratingAll(false);
   };
 
   const handleExportCSV = () => {
@@ -196,7 +215,8 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
   // --- PROGRESS CALCULATIONS FOR REVERSE MODE ---
   const totalItems = items.length;
   const completedItems = items.filter(i => i.status === 'completed').length;
-  const isGenerating = items.some(i => i.status === 'loading');
+  // Include isGeneratingAll to ensure progress bar stays visible during the delay pauses
+  const isGenerating = items.some(i => i.status === 'loading') || isGeneratingAll;
   const progressPercentage = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
   return (
@@ -269,10 +289,11 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
                     {items.filter(i => i.status === 'idle' || i.status === 'error').length > 0 && (
                     <button
                         onClick={handleGenerateAll}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition-colors shadow-sm shadow-pink-500/20"
+                        disabled={isGeneratingAll}
+                        className={`flex items-center gap-2 px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition-colors shadow-sm shadow-pink-500/20 ${isGeneratingAll ? 'opacity-70 cursor-wait' : ''}`}
                     >
-                        <Sparkles size={18} />
-                        Generate All ({items.filter(i => i.status === 'idle' || i.status === 'error').length})
+                        {isGeneratingAll ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                        {isGeneratingAll ? 'Generating...' : `Generate All (${items.filter(i => i.status === 'idle' || i.status === 'error').length})`}
                     </button>
                     )}
                 </div>
@@ -289,7 +310,8 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
                     
                     <button
                     onClick={handleClearAll}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg text-sm font-bold transition-colors border border-red-200 dark:border-red-800/50"
+                    disabled={isGeneratingAll}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg text-sm font-bold transition-colors border border-red-200 dark:border-red-800/50 disabled:opacity-50"
                     >
                     <Trash2 size={18} />
                     Clear All

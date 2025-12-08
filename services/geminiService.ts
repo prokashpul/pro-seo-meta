@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema, FunctionDeclaration } from "@google/genai";
 import { StockMetadata, ModelMode, GenerationSettings } from "../types";
 
@@ -49,15 +48,35 @@ function calculateBackoff(errorMsg: string, attempt: number): number {
 }
 
 /**
- * Helper to handle retries and model fallbacks for resilience.
+ * Parses the raw API key string into an array of keys.
+ * Handles newlines, commas, and whitespace.
+ */
+function parseKeys(apiKeyString: string | undefined): string[] {
+    if (!apiKeyString) return [];
+    return apiKeyString
+        .split(/[\n,]+/)
+        .map(k => k.trim())
+        .filter(k => k.length > 0);
+}
+
+/**
+ * Helper to handle retries, model fallbacks, and KEY ROTATION for resilience.
  */
 async function generateWithRetry(
-  ai: GoogleGenAI, 
+  keys: string[], 
   params: any, 
   isProMode: boolean, 
   retries = 3,
   attempt = 1
 ): Promise<any> {
+  // 1. Key Rotation: Pick a random key from the pool to distribute load
+  const keyIndex = Math.floor(Math.random() * keys.length);
+  const activeKey = keys[keyIndex];
+  
+  if (!activeKey) throw new Error("No valid API Key found.");
+
+  const ai = new GoogleGenAI({ apiKey: activeKey });
+
   try {
     return await ai.models.generateContent(params);
   } catch (e: any) {
@@ -66,6 +85,12 @@ async function generateWithRetry(
 
     // 1. Check for Invalid API Key
     if (msg.includes('API key not valid') || msg.includes('API_KEY_INVALID')) {
+        // If we have other keys, maybe this one is just bad?
+        if (keys.length > 1) {
+            console.warn(`Invalid API Key detected: ...${activeKey.slice(-4)}. Removing from pool for this request.`);
+            const remainingKeys = keys.filter(k => k !== activeKey);
+            return generateWithRetry(remainingKeys, params, isProMode, retries, attempt);
+        }
         throw new Error("Invalid API Key. Please click the 'API Key' button to update it.");
     }
 
@@ -73,8 +98,17 @@ async function generateWithRetry(
     const isQuota = status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
     const isServer = status >= 500 || msg.includes('503') || msg.includes('UNAVAILABLE');
     
+    if (isQuota && keys.length > 1) {
+        console.warn(`Quota exceeded on key ...${activeKey.slice(-4)}. Rotating to next available key.`);
+        // Remove the exhausted key from the pool for this specific request chain to avoid hitting it again immediately
+        const remainingKeys = keys.filter(k => k !== activeKey);
+        // Retry immediately (no backoff) with a new key
+        return generateWithRetry(remainingKeys, params, isProMode, retries, attempt + 1);
+    }
+
     if ((isQuota || isServer) && retries > 0) {
-        // STRATEGY: If Pro model hits quota, immediately fallback to Flash to avoid user wait time.
+        // STRATEGY: If Pro model hits quota (and we are out of keys or only have one), 
+        // fallback to Flash to avoid user wait time.
         // gemini-2.5-flash has higher limits than 3-pro-preview.
         if (isQuota && isProMode) {
             console.warn("Quota exceeded on Pro model. Falling back to Gemini 2.5 Flash for resilience.");
@@ -82,15 +116,15 @@ async function generateWithRetry(
             const fallbackParams = {
                 ...params,
                 model: 'gemini-2.5-flash',
-                // Remove thinking config for fallback to ensure speed/compatibility and save tokens
+                // Remove thinking config for fallback
                 config: {
                     ...params.config,
                     thinkingConfig: undefined 
                 }
             };
             
-            // Recursive call with fallback params, setting isProMode to false so we don't fallback again unnecessarily
-            return generateWithRetry(ai, fallbackParams, false, retries - 1, attempt + 1);
+            // Pass the original full key set (or current set) to the fallback
+            return generateWithRetry(keys, fallbackParams, false, retries - 1, attempt + 1);
         }
 
         // For other errors or if already on fallback, use smart backoff
@@ -98,12 +132,13 @@ async function generateWithRetry(
         console.log(`API Error (${status}). Retrying in ${delayTime}ms...`);
         await wait(delayTime);
         
-        return generateWithRetry(ai, params, isProMode, retries - 1, attempt + 1);
+        // Retry with same pool (maybe logic resets choice)
+        return generateWithRetry(keys, params, isProMode, retries - 1, attempt + 1);
     }
     
     // If we run out of retries and it was a quota error
     if (isQuota) {
-        throw new Error("Quota exceeded. The API rate limit has been reached. Please try again later.");
+        throw new Error("Quota exceeded. The API rate limit has been reached on all available keys. Please try again later.");
     }
     
     // If we run out of retries or it's a non-retriable error
@@ -119,14 +154,12 @@ export const generateImageMetadata = async (
   settings?: GenerationSettings
 ): Promise<StockMetadata> => {
   try {
-    const key = apiKey || process.env.API_KEY;
-    if (!key) throw new Error("API Key is missing. Please add your Gemini API Key.");
-
-    const ai = new GoogleGenAI({ apiKey: key });
+    const keyStr = apiKey || process.env.API_KEY;
+    const keys = parseKeys(keyStr);
     
+    if (keys.length === 0) throw new Error("API Key is missing. Please add your Gemini API Key.");
+
     // Select model based on user preference
-    // Quality: gemini-3-pro-preview (Best for vision)
-    // Fast: gemini-flash-lite-latest (Fastest)
     const primaryModel = mode === ModelMode.QUALITY ? 'gemini-3-pro-preview' : 'gemini-flash-lite-latest';
     const isPro = mode === ModelMode.QUALITY;
 
@@ -211,8 +244,8 @@ export const generateImageMetadata = async (
       Output strict JSON.
     `;
 
-    // Use the retry wrapper
-    const response = await generateWithRetry(ai, {
+    // Use the retry wrapper with key pool
+    const response = await generateWithRetry(keys, {
       model: primaryModel,
       contents: {
         parts: [
@@ -230,7 +263,6 @@ export const generateImageMetadata = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: metadataSchema,
-        // Only apply thinking budget if we are starting with the Quality model
         thinkingConfig: isPro ? { thinkingBudget: 2048 } : undefined,
       }
     }, isPro);
@@ -250,10 +282,13 @@ export const generateImageMetadata = async (
 
 export const getTrendingKeywords = async (baseKeywords: string[], apiKey?: string): Promise<string[]> => {
   try {
-    const key = apiKey || process.env.API_KEY;
-    if (!key) throw new Error("API Key is missing");
+    const keyStr = apiKey || process.env.API_KEY;
+    const keys = parseKeys(keyStr);
+    if (keys.length === 0) throw new Error("API Key is missing");
 
-    const ai = new GoogleGenAI({ apiKey: key });
+    // Random load balancing for trends
+    const activeKey = keys[Math.floor(Math.random() * keys.length)];
+    const ai = new GoogleGenAI({ apiKey: activeKey });
     
     // Use flash + search for trending data
     const modelName = 'gemini-2.5-flash';
@@ -294,10 +329,10 @@ export const generateImagePrompt = async (
   style: string = "Photography"
 ): Promise<string> => {
   try {
-    const key = apiKey || process.env.API_KEY;
-    if (!key) throw new Error("API Key is missing.");
+    const keyStr = apiKey || process.env.API_KEY;
+    const keys = parseKeys(keyStr);
+    if (keys.length === 0) throw new Error("API Key is missing.");
 
-    const ai = new GoogleGenAI({ apiKey: key });
     // Start with Pro model for best visual understanding
     const primaryModel = 'gemini-3-pro-preview';
     const isPro = true;
@@ -317,7 +352,7 @@ export const generateImagePrompt = async (
     `;
 
     // Use retry logic with fallback to Flash if Pro hits quota
-    const response = await generateWithRetry(ai, {
+    const response = await generateWithRetry(keys, {
       model: primaryModel,
       contents: {
         parts: [
@@ -338,7 +373,6 @@ export const generateImagePrompt = async (
 
   } catch (error) {
     console.error("Error generating prompt:", error);
-    // Rethrow logic handled by generateWithRetry or bubble up standard errors
     const msg = (error as Error).message || '';
     if (msg.includes("Invalid API Key")) throw new Error("Invalid API Key. Please update it.");
     throw error;
@@ -355,10 +389,10 @@ export const expandTextToPrompts = async (
   imageType: string = "Photography"
 ): Promise<string[]> => {
   try {
-    const key = apiKey || process.env.API_KEY;
-    if (!key) throw new Error("API Key is missing.");
+    const keyStr = apiKey || process.env.API_KEY;
+    const keys = parseKeys(keyStr);
+    if (keys.length === 0) throw new Error("API Key is missing.");
 
-    const ai = new GoogleGenAI({ apiKey: key });
     const model = 'gemini-2.5-flash';
 
     const prompt = `
@@ -373,7 +407,8 @@ export const expandTextToPrompts = async (
       Output strictly a JSON array of strings. Example: ["Prompt 1...", "Prompt 2..."]
     `;
 
-    const response = await ai.models.generateContent({
+    // Updated to use generateWithRetry with key pool
+    const response = await generateWithRetry(keys, {
       model: model,
       contents: prompt,
       config: {
@@ -383,7 +418,7 @@ export const expandTextToPrompts = async (
           items: { type: Type.STRING }
         }
       }
-    });
+    }, false); // false = not pro mode
 
     if (!response.text) return [];
     return JSON.parse(response.text) as string[];
@@ -409,15 +444,16 @@ export const generateImageFromText = async (
   advancedSettings?: { negativePrompt?: string; guidanceScale?: number; seed?: number }
 ): Promise<string> => {
   try {
-    const key = apiKey || process.env.API_KEY;
-    if (!key) throw new Error("API Key is missing.");
+    const keys = parseKeys(apiKey || process.env.API_KEY);
+    if (keys.length === 0) throw new Error("API Key is missing.");
 
-    const ai = new GoogleGenAI({ apiKey: key });
+    // Simple Load Balancing for Image Gen
+    const activeKey = keys[Math.floor(Math.random() * keys.length)];
+    const ai = new GoogleGenAI({ apiKey: activeKey });
     
     const parts: any[] = [];
     
     // 1. Add Source Image (if Edit Mode)
-    // Note: For editing with gemini-2.5-flash-image, we pass image + text.
     if (sourceImage) {
         parts.push({
             inlineData: {
@@ -429,7 +465,6 @@ export const generateImageFromText = async (
 
     // 2. Add Prompt
     let finalPrompt = prompt;
-    // Append negative prompt if provided (standard practice as config support varies)
     if (advancedSettings?.negativePrompt) {
         finalPrompt += ` --no ${advancedSettings.negativePrompt}`;
     }
