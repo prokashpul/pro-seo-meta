@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { UploadCloud, Sparkles, Copy, Check, Loader2, Image as ImageIcon, Trash2, ArrowLeft, Download, Type, RefreshCw, Palette, ChevronDown } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Sparkles, Copy, Check, Loader2, Image as ImageIcon, Trash2, ArrowLeft, Download, Type, RefreshCw, ChevronDown, XCircle } from 'lucide-react';
 import { FileUploader } from './FileUploader';
 import { optimizeImage } from '../services/imageOptimizer';
 import { generateImagePrompt, expandTextToPrompts } from '../services/geminiService';
@@ -42,6 +42,7 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
   // Reverse Image Mode State
   const [items, setItems] = useState<PromptItem[]>([]);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const stopGenerationRef = useRef(false);
   
   // Text Expansion Mode State
   const [inputText, setInputText] = useState('');
@@ -72,6 +73,10 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
   };
 
   const handleClearAll = () => {
+    if (isGeneratingAll) {
+        stopGenerationRef.current = true;
+        setIsGeneratingAll(false);
+    }
     items.forEach(item => URL.revokeObjectURL(item.previewUrl));
     setItems([]);
   };
@@ -97,6 +102,11 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
     }
   };
 
+  const handleStopGeneration = () => {
+      stopGenerationRef.current = true;
+      setIsGeneratingAll(false);
+  };
+
   const handleGenerateAll = async () => {
     if (!apiKey) {
       alert("Please add your API Key in the settings first.");
@@ -109,17 +119,22 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
     if (pendingItems.length === 0) return;
 
     setIsGeneratingAll(true);
+    stopGenerationRef.current = false;
 
     // Process sequentially to respect rate limits
     for (const item of pendingItems) {
+        if (stopGenerationRef.current) break;
+
         // Double check item still exists (wasn't deleted while running)
         if (!items.find(i => i.id === item.id)) continue;
         
         await handleGenerate(item.id);
         
-        // Add a delay between requests to prevent 429 Quota errors
-        // 2 seconds buffer
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Add a 5-second delay between requests to STRICTLY prevent 429 Quota errors on Free Tier
+        // Flash limit is 15 RPM (1 req / 4s). 5s buffer is safe.
+        if (!stopGenerationRef.current && pendingItems.indexOf(item) !== pendingItems.length - 1) {
+             await new Promise(resolve => setTimeout(resolve, 5000));
+        }
     }
 
     setIsGeneratingAll(false);
@@ -285,16 +300,31 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
                     </div>
                 )}
                 
-                <div>
+                <div className="flex items-center gap-3">
                     {items.filter(i => i.status === 'idle' || i.status === 'error').length > 0 && (
-                    <button
-                        onClick={handleGenerateAll}
-                        disabled={isGeneratingAll}
-                        className={`flex items-center gap-2 px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition-colors shadow-sm shadow-pink-500/20 ${isGeneratingAll ? 'opacity-70 cursor-wait' : ''}`}
-                    >
-                        {isGeneratingAll ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                        {isGeneratingAll ? 'Generating...' : `Generate All (${items.filter(i => i.status === 'idle' || i.status === 'error').length})`}
-                    </button>
+                      !isGeneratingAll ? (
+                        <button
+                            onClick={handleGenerateAll}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition-colors shadow-sm shadow-pink-500/20"
+                        >
+                            <Sparkles size={18} />
+                            {`Generate All (${items.filter(i => i.status === 'idle' || i.status === 'error').length})`}
+                        </button>
+                      ) : (
+                        <button
+                            onClick={handleStopGeneration}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-bold transition-colors shadow-sm"
+                        >
+                            <XCircle size={18} />
+                            Stop Generation
+                        </button>
+                      )
+                    )}
+                    
+                    {isGeneratingAll && (
+                        <span className="text-xs text-pink-500 font-bold flex items-center gap-2 animate-pulse">
+                            <Loader2 size={12} className="animate-spin" /> Processing safely (5s delay)...
+                        </span>
                     )}
                 </div>
 
