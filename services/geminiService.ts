@@ -42,9 +42,8 @@ function calculateBackoff(errorMsg: string, attempt: number): number {
     return Math.ceil(waitSeconds * 1000) + 2000 + jitter;
   }
   
-  // Fallback to exponential backoff: 2s, 4s, 8s, 16s... + jitter
-  // Base 2s for attempt 1
-  return (Math.pow(2, attempt) * 2000) + jitter;
+  // Fallback to exponential backoff: 3s, 6s, 12s... + jitter
+  return (Math.pow(2, attempt) * 3000) + jitter;
 }
 
 /**
@@ -98,6 +97,7 @@ async function generateWithRetry(
     const isQuota = status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
     const isServer = status >= 500 || msg.includes('503') || msg.includes('UNAVAILABLE');
     
+    // Key rotation on quota
     if (isQuota && keys.length > 1) {
         console.warn(`Quota exceeded on key ...${activeKey.slice(-4)}. Rotating to next available key.`);
         // Remove the exhausted key from the pool for this specific request chain to avoid hitting it again immediately

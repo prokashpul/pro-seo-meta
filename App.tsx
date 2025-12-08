@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { UploadedFile, ProcessingStatus, ModelMode, StockMetadata, GenerationSettings } from './types';
 import { generateImageMetadata, getTrendingKeywords } from './services/geminiService';
 import { optimizeImage } from './services/imageOptimizer';
@@ -10,7 +10,7 @@ import { About } from './components/About';
 import { PromptGenerator } from './components/PromptGenerator';
 import { EventCalendar } from './components/EventCalendar';
 import { SettingsPanel } from './components/SettingsPanel';
-import { Zap, Aperture, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar, Layers, Filter, Command, Activity, PieChart, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Zap, Aperture, Trash2, Github, TrendingUp, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, LogOut, Info, Home, Image as ImageIcon, Menu, X, Calendar, Layers, Filter, Command, Activity, PieChart, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import JSZip from 'jszip';
 
 const MAX_PARALLEL_UPLOADS = 3;
@@ -32,6 +32,10 @@ function App() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [renameOnExport, setRenameOnExport] = useState(true);
+  
+  // Batch Processing State
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+  const stopBatchRef = useRef(false);
   
   // Filter State
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -208,13 +212,36 @@ function App() {
 
   }, [modelMode]);
 
-  const handleGenerateAll = () => {
+  const handleGenerateAll = async () => {
     if (!apiKey && !process.env.API_KEY) {
         setIsApiKeyModalOpen(true);
         return;
     }
+    
     const toProcess = filteredFiles.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR);
-    toProcess.forEach(f => processFile(f));
+    if (toProcess.length === 0) return;
+
+    setIsBatchProcessing(true);
+    stopBatchRef.current = false;
+
+    // Process sequentially to avoid 429 Rate Limits
+    for (const f of toProcess) {
+        if (stopBatchRef.current) break;
+
+        await processFile(f);
+
+        // Add 2s delay between requests to be safe with rate limits
+        if (!stopBatchRef.current) {
+             await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+    }
+
+    setIsBatchProcessing(false);
+  };
+  
+  const handleStopBatch = () => {
+      stopBatchRef.current = true;
+      setIsBatchProcessing(false);
   };
   
   const handleRegenerate = (id: string) => {
@@ -252,6 +279,9 @@ function App() {
   };
 
   const handleClearAll = () => {
+    if (isBatchProcessing) {
+        handleStopBatch();
+    }
     files.forEach(f => {
         if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
     });
@@ -441,7 +471,9 @@ function App() {
   // Progress Calculation
   const totalUploads = files.length;
   const progressPercent = totalUploads > 0 ? ((completedFiles + errorFilesCount) / totalUploads) * 100 : 0;
-  const isProcessing = processingCount > 0;
+  
+  // Combine processing flags
+  const isProcessing = processingCount > 0 || isBatchProcessing;
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-500 ${isDarkMode ? 'bg-[#050505]' : 'bg-[#f8fafc]'}`}>
@@ -725,10 +757,23 @@ function App() {
                               )}
 
                               {pendingFilesCount > 0 && (
-                                <button onClick={handleGenerateAll} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-md shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                                   {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                                   Generate Pending
-                                </button>
+                                !isBatchProcessing ? (
+                                    <button onClick={handleGenerateAll} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-md shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                        <Sparkles size={16} />
+                                        Generate Pending
+                                    </button>
+                                ) : (
+                                    <button onClick={handleStopBatch} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-md shadow-red-500/20 transition-all">
+                                        <XCircle size={16} />
+                                        Stop Generation
+                                    </button>
+                                )
+                              )}
+                              
+                              {isBatchProcessing && (
+                                <div className="text-xs text-indigo-500 font-bold flex items-center gap-2 animate-pulse bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 rounded-lg">
+                                    <Loader2 size={12} className="animate-spin" /> Batch Processing...
+                                </div>
                               )}
 
                               {/* Stats Widget */}
