@@ -230,9 +230,9 @@ function App() {
 
         await processFile(f);
 
-        // Add 2s delay between requests to be safe with rate limits
+        // Add 6s delay between requests to be strictly safe with rate limits (15 RPM for Flash Free Tier)
         if (!stopBatchRef.current) {
-             await new Promise(resolve => setTimeout(resolve, 2000));
+             await new Promise(resolve => setTimeout(resolve, 6000));
         }
     }
 

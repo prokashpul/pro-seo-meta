@@ -130,10 +130,10 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
         
         await handleGenerate(item.id);
         
-        // Add a 5-second delay between requests to STRICTLY prevent 429 Quota errors on Free Tier
-        // Flash limit is 15 RPM (1 req / 4s). 5s buffer is safe.
+        // Add a 6-second delay between requests to STRICTLY prevent 429 Quota errors on Free Tier
+        // Flash limit is 15 RPM (1 req / 4s). 6s buffer is safe.
         if (!stopGenerationRef.current && pendingItems.indexOf(item) !== pendingItems.length - 1) {
-             await new Promise(resolve => setTimeout(resolve, 5000));
+             await new Promise(resolve => setTimeout(resolve, 6000));
         }
     }
 
@@ -323,7 +323,7 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
                     
                     {isGeneratingAll && (
                         <span className="text-xs text-pink-500 font-bold flex items-center gap-2 animate-pulse">
-                            <Loader2 size={12} className="animate-spin" /> Processing safely (5s delay)...
+                            <Loader2 size={12} className="animate-spin" /> Processing safely (6s delay)...
                         </span>
                     )}
                 </div>

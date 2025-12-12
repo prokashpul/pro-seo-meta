@@ -7,20 +7,20 @@ const metadataSchema: Schema = {
   properties: {
     title: {
       type: Type.STRING,
-      description: "A highly detailed, SEO-rich stock photography title. Must include Subject, Action, Context, and distinct visual details.",
+      description: "Adobe Stock compliant title. Factual, descriptive, natural sentence structure. Max 200 chars.",
     },
     description: {
       type: Type.STRING,
-      description: "Elite SEO Description. STRICT FORMULA: [Main Subject] + [Action/State] + [Context/Background]. Natural sentence structure only. No 'Image of'.",
+      description: "Detailed description for SEO differentiation. Includes specific visual details and mood.",
     },
     keywords: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "List of high-impact keywords. ORDER IS CRITICAL: Most relevant (Subject/Action) first, followed by Environment, then Concepts/Feelings.",
+      description: "Relevance-sorted keywords. Top 10 must be the most important visual elements.",
     },
     category: {
       type: Type.STRING,
-      description: "The most fitting stock photography category (e.g., Business, Lifestyle, Nature, Technology).",
+      description: "The most fitting stock photography category.",
     },
   },
   required: ["title", "description", "keywords", "category"],
@@ -107,26 +107,6 @@ async function generateWithRetry(
     }
 
     if ((isQuota || isServer) && retries > 0) {
-        // STRATEGY: If Pro model hits quota (and we are out of keys or only have one), 
-        // fallback to Flash to avoid user wait time.
-        // gemini-2.5-flash has higher limits than 3-pro-preview.
-        if (isQuota && isProMode) {
-            console.warn("Quota exceeded on Pro model. Falling back to Gemini 2.5 Flash for resilience.");
-            
-            const fallbackParams = {
-                ...params,
-                model: 'gemini-2.5-flash',
-                // Remove thinking config for fallback
-                config: {
-                    ...params.config,
-                    thinkingConfig: undefined 
-                }
-            };
-            
-            // Pass the original full key set (or current set) to the fallback
-            return generateWithRetry(keys, fallbackParams, false, retries - 1, attempt + 1);
-        }
-
         // For other errors or if already on fallback, use smart backoff
         const delayTime = calculateBackoff(msg, attempt);
         console.log(`API Error (${status}). Retrying in ${delayTime}ms...`);
@@ -159,9 +139,9 @@ export const generateImageMetadata = async (
     
     if (keys.length === 0) throw new Error("API Key is missing. Please add your Gemini API Key.");
 
-    // Select model based on user preference
-    const primaryModel = mode === ModelMode.QUALITY ? 'gemini-3-pro-preview' : 'gemini-flash-lite-latest';
-    const isPro = mode === ModelMode.QUALITY;
+    // EXPLICIT USER OVERRIDE: Use the robotics preview model for all operations
+    const primaryModel = 'gemini-robotics-er-1.5-preview'; 
+    const isPro = false; 
 
     let dynamicInstructions = "";
 
@@ -214,30 +194,32 @@ export const generateImageMetadata = async (
     }
 
     const prompt = `
-      Act as an ELITE Stock Photography Metadata Expert for Adobe Stock, Shutterstock, and Getty Images.
-      Your goal is MAXIMAL SEO DISCOVERABILITY and HIGH SALES CONVERSION.
+      Act as an EXPERT Metadata specialist for Adobe Stock, adhering strictly to the "Adobe Stock Contributor Guide for Titles and Keywords".
 
-      Analyze the image visually and generate metadata following these STRICT professional standards:
+      Analyze the image visually and generate metadata that maximizes search relevance ("weighting").
 
-      1. TITLE (Detailed & SEO-Rich):
-         - Structure: [Precise Subject] + [Action] + [Context] + [Distinctive Details].
-         - Example: "Happy young female entrepreneur working on laptop in modern bright office with glass walls."
-         - Avoid generic titles like "Business woman". Be specific.
-         - Length Constraint: MUST be between ${titleMin} and ${titleMax} WORDS.
-      
-      2. DESCRIPTION (The "Adobe Rule"):
-         - Structure: [Main Subject] + [Action/State] + [Context/Environment].
-         - Example: "A confident business woman analyzing charts on a tablet in a modern glass office."
-         - Must be a complete, natural sentence.
-         - NEVER start with "Image of", "Photo of", "A shot of".
-         - Length Constraint: MUST be between ${descMin} and ${descMax} WORDS.
+      === 1. TITLE GUIDELINES (Adobe Rule) ===
+      - STRUCTURE: [Subject] + [Action/State] + [Context/Environment].
+      - STYLE: Factual, descriptive, and natural sentence structure.
+      - LENGTH: Keep it between ${titleMin} and ${titleMax} words.
+      - FORBIDDEN: Do NOT start with "Image of", "Photo of", "Vector of", "Shot of".
+      - FORBIDDEN: Do NOT include camera specifications (4k, HD), artist names, or filenames.
+      - EXAMPLE: "Golden Retriever dog catching a tennis ball on a sunny beach." (Good)
+      - EXAMPLE: "A photo of a dog." (Bad)
 
-      3. KEYWORDS (Relevance Sorted):
-         - Quantity Constraint: Generate between ${kwMin} and ${kwMax} keywords.
-         - ORDER MATTERS: The first 10 keywords MUST be the most obvious visual elements (Subject, Action, Objects).
-         - Next keywords: Context, Environment, Lighting, Style (e.g., "sunny", "modern", "bokeh", "studio shot").
-         - Final keywords: Concepts, Emotions, Metaphors (e.g., "success", "freedom", "innovation", "teamwork").
-         - NO trademarked names/brands.
+      === 2. KEYWORD GUIDELINES (Relevance Sorting) ===
+      - QUANTITY: ${kwMin} to ${kwMax} keywords.
+      - **CRITICAL: SORTING ORDER MATTERS**. Adobe weights the first 7-10 keywords heavily.
+      - KEYWORDS 1-10 (Most Important): Must be VISUAL LITERALS. The main subject (e.g., "dog"), the action (e.g., "running"), the specific objects, and dominant colors.
+      - KEYWORDS 11-25 (Context): The location (e.g., "beach"), the time of day (e.g., "sunset"), the environment (e.g., "outdoors").
+      - KEYWORDS 26-50 (Conceptual): Emotions (e.g., "happiness"), Concepts (e.g., "freedom"), Metaphors.
+      - FORMAT: Use single words mostly. Use phrases only if standard (e.g., "ice cream").
+      - FORBIDDEN: Do not repeat words already in the title if they are irrelevant. Do not spam unrelated words.
+
+      === 3. DESCRIPTION ===
+      - Write a slightly longer variation of the title (15-30 words).
+      - Include distinct visual details that didn't fit in the title (e.g., clothing color, specific lighting type, background details).
+      - Must be a complete sentence.
 
       ${dynamicInstructions}
       
@@ -290,8 +272,9 @@ export const getTrendingKeywords = async (baseKeywords: string[], apiKey?: strin
     const activeKey = keys[Math.floor(Math.random() * keys.length)];
     const ai = new GoogleGenAI({ apiKey: activeKey });
     
-    // Use flash + search for trending data
-    const modelName = 'gemini-2.5-flash';
+    // EXPLICIT USER OVERRIDE
+    const modelName = 'gemini-robotics-er-1.5-preview';
+    
     const query = `
       Find current trending search terms related to these stock photography keywords: ${baseKeywords.slice(0, 5).join(", ")}.
       Return a simple list of 5-10 separate trending related keywords or phrases that people are searching for right now.
@@ -333,9 +316,9 @@ export const generateImagePrompt = async (
     const keys = parseKeys(keyStr);
     if (keys.length === 0) throw new Error("API Key is missing.");
 
-    // Start with Pro model for best visual understanding
-    const primaryModel = 'gemini-3-pro-preview';
-    const isPro = true;
+    // EXPLICIT USER OVERRIDE
+    const primaryModel = 'gemini-robotics-er-1.5-preview'; 
+    const isPro = false;
 
     const prompt = `
       Analyze this image and write a detailed, high-quality text prompt that could be used to generate this exact image using an AI image generator (like Midjourney v6 or Stable Diffusion XL).
@@ -393,7 +376,8 @@ export const expandTextToPrompts = async (
     const keys = parseKeys(keyStr);
     if (keys.length === 0) throw new Error("API Key is missing.");
 
-    const model = 'gemini-2.5-flash';
+    // EXPLICIT USER OVERRIDE
+    const model = 'gemini-robotics-er-1.5-preview';
 
     const prompt = `
       Act as an expert prompt engineer for Midjourney v6 and Stable Diffusion.
