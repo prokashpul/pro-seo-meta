@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Sparkles, Copy, Check, Loader2, Image as ImageIcon, Trash2, ArrowLeft, Download, Type, RefreshCw, ChevronDown, XCircle } from 'lucide-react';
 import { FileUploader } from './FileUploader';
@@ -94,7 +93,7 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ apiKey, onBack
       if (!item) return;
 
       const { base64, mimeType } = await optimizeImage(item.file);
-      const prompt = await generateImagePrompt(base64, mimeType, apiKey);
+      const prompt = await generateImagePrompt(base64, mimeType, apiKey, item.file.type.startsWith('image/') ? "Photography" : "Vector");
 
       setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'completed', prompt } : i));
     } catch (err: any) {

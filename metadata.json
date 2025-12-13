@@ -1,5 +1,5 @@
 {
-  "name": "StockMeta AI",
-  "description": "AI-powered metadata generator for Adobe Stock and Shutterstock contributors. Upload images to automatically generate SEO-optimized titles, descriptions, and keywords using advanced Gemini Vision models.",
+  "name": "StockMeta AI (Gemini 2.5)",
+  "description": "Metadata generator for stock photography powered by Google Gemini 2.5 Flash and Flash Lite.",
   "requestFramePermissions": []
 }

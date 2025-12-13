@@ -8,8 +8,10 @@ export enum ProcessingStatus {
 }
 
 export enum ModelMode {
-  QUALITY = 'QUALITY', // gemini-3-pro-preview
-  FAST = 'FAST'        // gemini-flash-lite-latest
+  QUALITY = 'QUALITY', 
+  FAST = 'FAST',
+  ROBOTICS = 'ROBOTICS',
+  MISTRAL_PIXTRAL = 'MISTRAL_PIXTRAL'
 }
 
 export interface StockMetadata {

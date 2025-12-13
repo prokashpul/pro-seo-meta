@@ -1,55 +1,14 @@
-import { GoogleGenAI, Type, Schema, FunctionDeclaration } from "@google/genai";
+import { GoogleGenAI, Schema, Type } from "@google/genai";
 import { StockMetadata, ModelMode, GenerationSettings } from "../types";
 
-// Schema for structured JSON output
-const metadataSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    title: {
-      type: Type.STRING,
-      description: "Adobe Stock compliant title. Factual, descriptive, natural sentence structure. Max 200 chars.",
-    },
-    description: {
-      type: Type.STRING,
-      description: "Detailed description for SEO differentiation. Includes specific visual details and mood.",
-    },
-    keywords: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "Relevance-sorted keywords. Top 10 must be the most important visual elements.",
-    },
-    category: {
-      type: Type.STRING,
-      description: "The most fitting stock photography category.",
-    },
-  },
-  required: ["title", "description", "keywords", "category"],
-};
+// --- GEMINI CONFIG ---
+// User requested: gemini-2.5-flash, gemini-2.5-flash-lite, gemini-robotics-er-1.5-preview
+const GEMINI_MODEL_FAST = "gemini-2.5-flash-lite"; 
+const GEMINI_MODEL_QUALITY = "gemini-2.5-flash";
+const GEMINI_MODEL_ROBOTICS = "gemini-robotics-er-1.5-preview"; // High-spatial reasoning
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-function calculateBackoff(errorMsg: string, attempt: number): number {
-  // Try to parse specific wait time from error message
-  // Example: "Please retry in 58.753408782s."
-  const match = errorMsg ? errorMsg.match(/retry in (\d+(\.\d+)?)s/) : null;
-  
-  // Add randomness (jitter) to prevent thundering herd problem
-  const jitter = Math.random() * 2000; 
-
-  if (match && match[1]) {
-    // Add 2s buffer + jitter to the requested wait time
-    const waitSeconds = parseFloat(match[1]);
-    return Math.ceil(waitSeconds * 1000) + 2000 + jitter;
-  }
-  
-  // Fallback to exponential backoff: 3s, 6s, 12s... + jitter
-  return (Math.pow(2, attempt) * 3000) + jitter;
-}
-
-/**
- * Parses the raw API key string into an array of keys.
- * Handles newlines, commas, and whitespace.
- */
 function parseKeys(apiKeyString: string | undefined): string[] {
     if (!apiKeyString) return [];
     return apiKeyString
@@ -58,386 +17,367 @@ function parseKeys(apiKeyString: string | undefined): string[] {
         .filter(k => k.length > 0);
 }
 
-/**
- * Helper to handle retries, model fallbacks, and KEY ROTATION for resilience.
- */
-async function generateWithRetry(
-  keys: string[], 
-  params: any, 
-  isProMode: boolean, 
-  retries = 3,
-  attempt = 1
-): Promise<any> {
-  // 1. Key Rotation: Pick a random key from the pool to distribute load
-  const keyIndex = Math.floor(Math.random() * keys.length);
-  const activeKey = keys[keyIndex];
+// --- HELPER: CONSTRUCT PROMPT ---
+function buildSystemPrompt(settings?: GenerationSettings, mimeType?: string): string {
+  const titleMin = settings?.titleWordCountMin || 7;
+  const titleMax = settings?.titleWordCountMax || 25;
+  const descMin = settings?.descriptionWordCountMin || 12;
+  const descMax = settings?.descriptionWordCountMax || 40;
+  const kwMin = settings?.keywordCountMin || 25;
+  const kwMax = settings?.keywordCountMax || 49;
+
+  let detectionRules = "";
   
-  if (!activeKey) throw new Error("No valid API Key found.");
-
-  const ai = new GoogleGenAI({ apiKey: activeKey });
-
-  try {
-    return await ai.models.generateContent(params);
-  } catch (e: any) {
-    const msg = e?.message || String(e);
-    const status = e?.status;
-
-    // 1. Check for Invalid API Key
-    if (msg.includes('API key not valid') || msg.includes('API_KEY_INVALID')) {
-        // If we have other keys, maybe this one is just bad?
-        if (keys.length > 1) {
-            console.warn(`Invalid API Key detected: ...${activeKey.slice(-4)}. Removing from pool for this request.`);
-            const remainingKeys = keys.filter(k => k !== activeKey);
-            return generateWithRetry(remainingKeys, params, isProMode, retries, attempt);
-        }
-        throw new Error("Invalid API Key. Please click the 'API Key' button to update it.");
-    }
-
-    // Check for 429 (Quota Exceeded) or 503 (Service Unavailable)
-    const isQuota = status === 429 || msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
-    const isServer = status >= 500 || msg.includes('503') || msg.includes('UNAVAILABLE');
-    
-    // Key rotation on quota
-    if (isQuota && keys.length > 1) {
-        console.warn(`Quota exceeded on key ...${activeKey.slice(-4)}. Rotating to next available key.`);
-        // Remove the exhausted key from the pool for this specific request chain to avoid hitting it again immediately
-        const remainingKeys = keys.filter(k => k !== activeKey);
-        // Retry immediately (no backoff) with a new key
-        return generateWithRetry(remainingKeys, params, isProMode, retries, attempt + 1);
-    }
-
-    if ((isQuota || isServer) && retries > 0) {
-        // For other errors or if already on fallback, use smart backoff
-        const delayTime = calculateBackoff(msg, attempt);
-        console.log(`API Error (${status}). Retrying in ${delayTime}ms...`);
-        await wait(delayTime);
-        
-        // Retry with same pool (maybe logic resets choice)
-        return generateWithRetry(keys, params, isProMode, retries - 1, attempt + 1);
-    }
-    
-    // If we run out of retries and it was a quota error
-    if (isQuota) {
-        throw new Error("Quota exceeded. The API rate limit has been reached on all available keys. Please try again later.");
-    }
-    
-    // If we run out of retries or it's a non-retriable error
-    throw e;
+  // 1. Transparency Logic
+  // Updated to strictly check for transparency regardless of input mime type (as optimizeImage normalizes to webp)
+  // Instructions expanded to include Vector formats (EPS, AI) as per user request.
+  if (settings?.transparentBackground) {
+      detectionRules += `- CHECK ALPHA CHANNEL: If the image appears to be a PNG, WebP, EPS, or AI file and has an alpha channel (transparent background), the Title MUST end with "Isolated on Transparent Background". Keywords MUST include "transparent", "background", "isolated".\n`;
   }
+
+  // 2. White Background Logic
+  if (settings?.whiteBackground) {
+      detectionRules += `- VISUAL CHECK: If background is white, Title MUST end with "Isolated on White Background". Keywords must include "isolated", "white background".\n`;
+  }
+
+  // 3. Silhouette Logic
+  if (settings?.silhouette) {
+      detectionRules += `- VISUAL CHECK: If subject is a silhouette, Title MUST include "Silhouette". Keywords must include "silhouette", "shadow", "backlit".\n`;
+  }
+
+  // 4. Single Word Constraint
+  if (settings?.singleWordKeywords) {
+      detectionRules += `- KEYWORDS FORMAT: STRICTLY SINGLE WORDS ONLY. No phrases.\n`;
+  }
+
+  // 5. Custom & Prohibited
+  if (settings?.prohibitedWordsEnabled && settings?.prohibitedWordsText) {
+      detectionRules += `- FORBIDDEN WORDS: Do NOT use: ${settings.prohibitedWordsText}\n`;
+  }
+  if (settings?.customPromptEnabled && settings?.customPromptText) {
+      detectionRules += `- USER INSTRUCTION: ${settings.customPromptText}\n`;
+  }
+
+  return `
+    You are an elite Stock Photography Metadata Expert for Adobe Stock, Shutterstock, and Getty Images.
+    
+    YOUR GOAL: Maximize SEO discoverability and sales conversion.
+    
+    STRICT JSON OUTPUT FORMAT REQUIRED:
+    {
+      "title": "string",
+      "description": "string", 
+      "keywords": ["string", "string"],
+      "category": "string"
+    }
+
+    === 1. TITLE GUIDELINES (Adobe Rule) ===
+    - Length: ${titleMin}-${titleMax} words.
+    - Structure: [Subject] + [Action/State] + [Context/Environment] + [Distinct Detail].
+    - Style: Factual, descriptive, natural sentence. NO "Image of", "Photo of".
+    
+    === 2. KEYWORD GUIDELINES (Relevance Sorting) ===
+    - Quantity: ${kwMin}-${kwMax} keywords.
+    - **CRITICAL: ORDER MATTERS**.
+    - First 10: Visual Literals (What you see: Dog, Running, Grass, Blue).
+    - Next 10: Context & Environment (Park, Sunny, Summer, Outdoors).
+    - Last: Concepts & Emotions (Happiness, Freedom, Speed).
+    
+    === 3. DESCRIPTION ===
+    - Length: ${descMin}-${descMax} words.
+    - A natural sentence expanding on the title with more visual details.
+
+    === DETECTION RULES ===
+    ${detectionRules}
+  `;
 }
 
+// --- MISTRAL IMPLEMENTATION ---
+async function callMistral(
+    keys: string[],
+    systemPrompt: string,
+    mimeType: string,
+    base64Data: string
+): Promise<any> {
+    const key = keys[0];
+    if (!key) throw new Error("Mistral API Key missing");
+
+    const url = "https://api.mistral.ai/v1/chat/completions";
+
+    const payload = {
+        model: "pixtral-12b-2409",
+        messages: [
+            {
+                role: "system",
+                content: systemPrompt
+            },
+            {
+                role: "user",
+                content: [
+                    {
+                        type: "text",
+                        text: "Analyze this image and generate the metadata JSON."
+                    },
+                    {
+                        type: "image_url",
+                        image_url: {
+                            url: `data:${mimeType};base64,${base64Data}`
+                        }
+                    }
+                ]
+            }
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+    };
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${key}`
+        },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Mistral API Error: ${err}`);
+    }
+
+    const data = await response.json();
+    return { text: data.choices[0].message.content };
+}
+
+// --- GEMINI IMPLEMENTATION ---
+async function callGemini(
+    keys: string[],
+    modelId: string,
+    prompt: string,
+    mimeType: string,
+    base64Data: string,
+    responseSchema?: any,
+    retries = 3
+): Promise<any> {
+    const keyIndex = Math.floor(Math.random() * keys.length);
+    const activeKey = keys[keyIndex];
+    if (!activeKey) throw new Error("No valid Gemini API Key found.");
+
+    const ai = new GoogleGenAI({ apiKey: activeKey });
+
+    try {
+        const config: any = {
+            temperature: 0.3,
+        };
+        
+        if (responseSchema) {
+            config.responseMimeType = "application/json";
+            config.responseSchema = responseSchema;
+        }
+
+        const response = await ai.models.generateContent({
+            model: modelId,
+            contents: {
+                parts: [
+                    { inlineData: { mimeType, data: base64Data } },
+                    { text: prompt }
+                ]
+            },
+            config: config
+        });
+
+        return response;
+
+    } catch (e: any) {
+        const msg = e.message || String(e);
+        if ((msg.includes('429') || msg.includes('quota')) && retries > 0) {
+             if (keys.length > 1) {
+                 const remaining = keys.filter(k => k !== activeKey);
+                 return callGemini(remaining, modelId, prompt, mimeType, base64Data, responseSchema, retries);
+             }
+             await wait(3000);
+             return callGemini(keys, modelId, prompt, mimeType, base64Data, responseSchema, retries - 1);
+        }
+        throw e;
+    }
+}
+
+// --- MAIN EXPORT: GENERATE METADATA ---
 export const generateImageMetadata = async (
   base64Data: string,
   mimeType: string,
   mode: ModelMode,
-  apiKey?: string,
-  settings?: GenerationSettings
+  apiKey: string,
+  settings: GenerationSettings
 ): Promise<StockMetadata> => {
-  try {
-    const keyStr = apiKey || process.env.API_KEY;
-    const keys = parseKeys(keyStr);
+  const keys = parseKeys(apiKey);
+  if (keys.length === 0) throw new Error(`API Key is missing.`);
+
+  const systemPrompt = buildSystemPrompt(settings, mimeType);
+  
+  // Mistral Logic
+  if (mode === ModelMode.MISTRAL_PIXTRAL) {
+      const response = await callMistral(keys, systemPrompt, mimeType, base64Data);
+      try {
+          return JSON.parse(response.text) as StockMetadata;
+      } catch (e) {
+          throw new Error("Mistral returned invalid JSON. Please try again.");
+      }
+  }
+
+  // Gemini Logic
+  let modelId = GEMINI_MODEL_FAST;
+  if (mode === ModelMode.QUALITY) {
+      modelId = GEMINI_MODEL_QUALITY;
+  } else if (mode === ModelMode.ROBOTICS) {
+      modelId = GEMINI_MODEL_ROBOTICS;
+  }
+  
+  const metadataSchema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+        title: { type: Type.STRING },
+        description: { type: Type.STRING },
+        keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+        category: { type: Type.STRING },
+    },
+    required: ["title", "description", "keywords", "category"],
+  };
+
+  const response = await callGemini(keys, modelId, systemPrompt, mimeType, base64Data, metadataSchema);
+  
+  if (!response.text) throw new Error("Gemini returned empty response");
+  return JSON.parse(response.text) as StockMetadata;
+};
+
+// --- TRENDING KEYWORDS ---
+export const getTrendingKeywords = async (baseKeywords: string[], apiKey: string): Promise<string[]> => {
+    const keys = parseKeys(apiKey);
+    if (keys.length === 0) throw new Error("API Key missing");
     
-    if (keys.length === 0) throw new Error("API Key is missing. Please add your Gemini API Key.");
-
-    // EXPLICIT USER OVERRIDE: Use the robotics preview model for all operations
-    const primaryModel = 'gemini-robotics-er-1.5-preview'; 
-    const isPro = false; 
-
-    let dynamicInstructions = "";
-
-    // Default PNG Check (can be overridden by settings)
-    if (mimeType === 'image/png' && !settings?.transparentBackground && !settings?.whiteBackground) {
-        dynamicInstructions += `
-        CRITICAL INSTRUCTIONS FOR PNG IMAGES:
-        1. VISUAL CHECK: Determine if the image has a transparent background (checkerboard or invisible) or is an isolated object.
-        2. IF TRANSPARENT/ISOLATED:
-           - Title MUST end with the exact phrase: "Isolated on Transparent Background".
-           - Description MUST contain the phrase: "isolated on transparent background".
-           - Keywords MUST include: "transparent", "background", "isolated", "cutout", "png".
-           - NEGATIVE CONSTRAINT: DO NOT use the words "Black", "Dark", or "White" to describe the background. Treat the background as non-existent/transparent.
-        `;
-    }
-
-    // Default counts if not provided (safe fallbacks)
-    const titleMin = settings?.titleWordCountMin || 7;
-    const titleMax = settings?.titleWordCountMax || 25;
-    const descMin = settings?.descriptionWordCountMin || 12;
-    const descMax = settings?.descriptionWordCountMax || 40;
-    const kwMin = settings?.keywordCountMin || 35;
-    const kwMax = settings?.keywordCountMax || 49;
-
-    // Apply Settings
-    if (settings) {
-        if (settings.silhouette) {
-            dynamicInstructions += `\n- VISUAL: Check for silhouette. If valid, title MUST contain "Silhouette" and keywords MUST include "silhouette", "shadow", "backlit".`;
-        }
-        
-        if (settings.whiteBackground) {
-            dynamicInstructions += `\n- BACKGROUND: Force check for White Background. If confirmed, Title MUST end with "Isolated on White Background". Description MUST say "isolated on white background".`;
-        }
-        
-        if (settings.transparentBackground) {
-            dynamicInstructions += `\n- BACKGROUND: TREAT AS TRANSPARENT. Title MUST end with "Isolated on Transparent Background". Description MUST say "isolated on transparent background". Keywords MUST include "transparent", "background", "isolated".`;
-        }
-        
-        if (settings.singleWordKeywords) {
-            dynamicInstructions += `\n- KEYWORDS: STRICTLY SINGLE WORDS ONLY. No multi-word phrases allowed (e.g., use "blue", "sky" instead of "blue sky").`;
-        }
-        
-        if (settings.prohibitedWordsEnabled && settings.prohibitedWordsText) {
-            dynamicInstructions += `\n- NEGATIVE CONSTRAINTS: DO NOT use the following words in Title, Description, or Keywords: ${settings.prohibitedWordsText}.`;
-        }
-        
-        if (settings.customPromptEnabled && settings.customPromptText) {
-            dynamicInstructions += `\n- ADDITIONAL USER INSTRUCTION: ${settings.customPromptText}`;
-        }
-    }
-
     const prompt = `
-      Act as an EXPERT Metadata specialist for Adobe Stock, adhering strictly to the "Adobe Stock Contributor Guide for Titles and Keywords".
-
-      Analyze the image visually and generate metadata that maximizes search relevance ("weighting").
-
-      === 1. TITLE GUIDELINES (Adobe Rule) ===
-      - STRUCTURE: [Subject] + [Action/State] + [Context/Environment].
-      - STYLE: Factual, descriptive, and natural sentence structure.
-      - LENGTH: Keep it between ${titleMin} and ${titleMax} words.
-      - FORBIDDEN: Do NOT start with "Image of", "Photo of", "Vector of", "Shot of".
-      - FORBIDDEN: Do NOT include camera specifications (4k, HD), artist names, or filenames.
-      - EXAMPLE: "Golden Retriever dog catching a tennis ball on a sunny beach." (Good)
-      - EXAMPLE: "A photo of a dog." (Bad)
-
-      === 2. KEYWORD GUIDELINES (Relevance Sorting) ===
-      - QUANTITY: ${kwMin} to ${kwMax} keywords.
-      - **CRITICAL: SORTING ORDER MATTERS**. Adobe weights the first 7-10 keywords heavily.
-      - KEYWORDS 1-10 (Most Important): Must be VISUAL LITERALS. The main subject (e.g., "dog"), the action (e.g., "running"), the specific objects, and dominant colors.
-      - KEYWORDS 11-25 (Context): The location (e.g., "beach"), the time of day (e.g., "sunset"), the environment (e.g., "outdoors").
-      - KEYWORDS 26-50 (Conceptual): Emotions (e.g., "happiness"), Concepts (e.g., "freedom"), Metaphors.
-      - FORMAT: Use single words mostly. Use phrases only if standard (e.g., "ice cream").
-      - FORBIDDEN: Do not repeat words already in the title if they are irrelevant. Do not spam unrelated words.
-
-      === 3. DESCRIPTION ===
-      - Write a slightly longer variation of the title (15-30 words).
-      - Include distinct visual details that didn't fit in the title (e.g., clothing color, specific lighting type, background details).
-      - Must be a complete sentence.
-
-      ${dynamicInstructions}
-      
-      Output strict JSON.
+        SEO Expert Task: Analyze these keywords: ${baseKeywords.slice(0, 5).join(", ")}.
+        Identify 5-10 "Trending" or "High Volume" related search terms for stock photography.
     `;
 
-    // Use the retry wrapper with key pool
-    const response = await generateWithRetry(keys, {
-      model: primaryModel,
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Data
-            }
-          },
-          {
-            text: prompt
-          }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: metadataSchema,
-        thinkingConfig: isPro ? { thinkingBudget: 2048 } : undefined,
-      }
-    }, isPro);
-
-    if (!response.text) {
-      throw new Error("No response text generated");
-    }
-
-    const json = JSON.parse(response.text);
-    return json as StockMetadata;
-
-  } catch (error) {
-    console.error("Error generating metadata:", error);
-    throw error;
-  }
-};
-
-export const getTrendingKeywords = async (baseKeywords: string[], apiKey?: string): Promise<string[]> => {
-  try {
-    const keyStr = apiKey || process.env.API_KEY;
-    const keys = parseKeys(keyStr);
-    if (keys.length === 0) throw new Error("API Key is missing");
-
-    // Random load balancing for trends
-    const activeKey = keys[Math.floor(Math.random() * keys.length)];
-    const ai = new GoogleGenAI({ apiKey: activeKey });
-    
-    // EXPLICIT USER OVERRIDE
-    const modelName = 'gemini-robotics-er-1.5-preview';
-    
-    const query = `
-      Find current trending search terms related to these stock photography keywords: ${baseKeywords.slice(0, 5).join(", ")}.
-      Return a simple list of 5-10 separate trending related keywords or phrases that people are searching for right now.
-      Do not explain, just list them.
-    `;
-
+    const ai = new GoogleGenAI({ apiKey: keys[0] });
+    // Use Flash for Search Grounding (Tools support)
     const response = await ai.models.generateContent({
-      model: modelName,
-      contents: query,
-      config: {
-        tools: [{ googleSearch: {} }]
-      }
+            model: GEMINI_MODEL_QUALITY, // Using 2.5 Flash for better grounding capability
+            contents: prompt,
+            config: { tools: [{ googleSearch: {} }] }
     });
-
     const text = response.text || "";
-    const lines = text.split('\n')
-      .map(line => line.replace(/^[\d-]*\.\s*/, '').trim()) // remove numbering
-      .filter(line => line.length > 0 && !line.startsWith("Source") && !line.startsWith("http"));
-    
-    return lines.slice(0, 10);
-
-  } catch (error) {
-    console.error("Error fetching trends:", error);
-    return [];
-  }
+    // Clean up text response
+    return text.split('\n').map(l => l.replace(/^[-\d.]+\s*/, '').trim()).filter(l => l.length > 2).slice(0, 10);
 };
 
-/**
- * Generates a short, realistic image generation prompt from an image.
- */
+// --- GENERATE IMAGE PROMPT (Reverse Engineering) ---
 export const generateImagePrompt = async (
   base64Data: string,
   mimeType: string,
-  apiKey?: string,
-  style: string = "Photography"
+  apiKey: string,
+  imageType: string
 ): Promise<string> => {
-  try {
-    const keyStr = apiKey || process.env.API_KEY;
-    const keys = parseKeys(keyStr);
-    if (keys.length === 0) throw new Error("API Key is missing.");
+  const keys = parseKeys(apiKey);
+  if (keys.length === 0) throw new Error("API Key missing");
 
-    // EXPLICIT USER OVERRIDE
-    const primaryModel = 'gemini-robotics-er-1.5-preview'; 
-    const isPro = false;
+  const ai = new GoogleGenAI({ apiKey: keys[0] });
+  // Using 2.5 Flash for advanced vision capabilities
+  const model = GEMINI_MODEL_QUALITY;
 
-    const prompt = `
-      Analyze this image and write a detailed, high-quality text prompt that could be used to generate this exact image using an AI image generator (like Midjourney v6 or Stable Diffusion XL).
-      
-      TARGET STYLE: ${style}
-      
-      Focus on:
-      1. Main subject and action (be specific)
-      2. Lighting and atmosphere
-      3. Artistic style, medium, and composition details relevant to "${style}"
-      4. Camera settings or rendering details (e.g., 8k, octane render, macro lens) if applicable to the style.
-      
-      Keep it under 100 words. Be direct and descriptive. Do not include intro text like "Here is a prompt".
-    `;
+  const prompt = `
+    Analyze this image and write a detailed, high-quality text prompt that could be used to recreate this exact image using an AI generator like Midjourney or Stable Diffusion.
+    
+    Context:
+    - Image Style: ${imageType}
+    - Include details about subject, lighting, composition, camera angle, color palette, and mood.
+    - If it's a vector/illustration, describe the art style.
+    
+    Output ONLY the prompt text. Do not add conversational filler.
+  `;
 
-    // Use retry logic with fallback to Flash if Pro hits quota
-    const response = await generateWithRetry(keys, {
-      model: primaryModel,
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Data
-            }
-          },
-          {
-            text: prompt
-          }
-        ]
-      }
-    }, isPro);
+  const response = await ai.models.generateContent({
+    model: model,
+    contents: {
+      parts: [
+        { inlineData: { mimeType, data: base64Data } },
+        { text: prompt }
+      ]
+    }
+  });
 
-    return response.text || "Failed to generate prompt.";
-
-  } catch (error) {
-    console.error("Error generating prompt:", error);
-    const msg = (error as Error).message || '';
-    if (msg.includes("Invalid API Key")) throw new Error("Invalid API Key. Please update it.");
-    throw error;
-  }
+  return response.text || "";
 };
 
-/**
- * Expands a short text concept into multiple detailed image generation prompts.
- */
+// --- EXPAND TEXT TO PROMPTS ---
 export const expandTextToPrompts = async (
-  shortText: string,
+  text: string,
   count: number,
-  apiKey?: string,
-  imageType: string = "Photography"
+  apiKey: string,
+  style: string
 ): Promise<string[]> => {
-  try {
-    const keyStr = apiKey || process.env.API_KEY;
-    const keys = parseKeys(keyStr);
-    if (keys.length === 0) throw new Error("API Key is missing.");
+  const keys = parseKeys(apiKey);
+  if (keys.length === 0) throw new Error("API Key missing");
 
-    // EXPLICIT USER OVERRIDE
-    const model = 'gemini-robotics-er-1.5-preview';
+  const ai = new GoogleGenAI({ apiKey: keys[0] });
+  // Using Flash Lite for fast text expansion
+  const model = GEMINI_MODEL_FAST;
 
-    const prompt = `
-      Act as an expert prompt engineer for Midjourney v6 and Stable Diffusion.
-      Create ${count} distinct, highly detailed, and creative image generation prompts based on the following concept:
-      "${shortText}"
+  const prompt = `
+    Act as a Professional AI Prompt Engineer.
+    
+    INPUT CONCEPT: "${text}"
+    TARGET STYLE: "${style}"
+    
+    TASK: Generate ${count} distinct, highly detailed AI image generation prompts based on the Input Concept.
+    Each prompt should explore a slightly different angle or composition while maintaining the Target Style.
+    Include artistic terms, lighting descriptions, and rendering engines (e.g. Unreal Engine 5, Octane Render) where appropriate.
 
-      Target Style: ${imageType}
+    FORMAT: Return a JSON array of strings. 
+    Example: ["Prompt 1...", "Prompt 2..."]
+  `;
 
-      Each prompt should be high quality, specifying style details, lighting, camera settings, and atmosphere appropriate for ${imageType}.
-      
-      Output strictly a JSON array of strings. Example: ["Prompt 1...", "Prompt 2..."]
-    `;
-
-    // Updated to use generateWithRetry with key pool
-    const response = await generateWithRetry(keys, {
-      model: model,
-      contents: prompt,
-      config: {
+  const response = await ai.models.generateContent({
+    model: model,
+    contents: prompt,
+    config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING }
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
         }
+    }
+  });
+
+  if (response.text) {
+      try {
+          return JSON.parse(response.text);
+      } catch (e) {
+          console.error("Failed to parse JSON response", e);
+          return [];
       }
-    }, false); // false = not pro mode
-
-    if (!response.text) return [];
-    return JSON.parse(response.text) as string[];
-
-  } catch (error) {
-    console.error("Error expanding prompts:", error);
-    const msg = (error as Error).message || '';
-    if (msg.includes("Invalid API Key")) throw new Error("Invalid API Key. Please update it.");
-    throw error;
   }
+  return [];
 };
 
-/**
- * Generates an image using the Gemini 2.5 Flash Image model.
- * Supports Text-to-Image and Image-to-Image (Editing).
- */
+// --- GENERATE IMAGE FROM TEXT (and optional Source Image) ---
 export const generateImageFromText = async (
-  prompt: string,
-  aspectRatio: string,
-  modelId: string,
-  apiKey: string,
-  sourceImage?: { base64: string; mimeType: string },
-  advancedSettings?: { negativePrompt?: string; guidanceScale?: number; seed?: number }
+    prompt: string,
+    aspectRatio: string, // "1:1", "3:4", "4:3", "9:16", "16:9"
+    modelId: string, 
+    apiKey: string,
+    sourceImage?: { base64: string, mimeType: string, previewUrl?: string },
+    advancedSettings?: { negativePrompt?: string, seed?: number, guidanceScale?: number }
 ): Promise<string> => {
-  try {
-    const keys = parseKeys(apiKey || process.env.API_KEY);
-    if (keys.length === 0) throw new Error("API Key is missing.");
+    const keys = parseKeys(apiKey);
+    if (keys.length === 0) throw new Error("API Key missing");
 
-    // Simple Load Balancing for Image Gen
-    const activeKey = keys[Math.floor(Math.random() * keys.length)];
-    const ai = new GoogleGenAI({ apiKey: activeKey });
+    const ai = new GoogleGenAI({ apiKey: keys[0] });
     
     const parts: any[] = [];
     
-    // 1. Add Source Image (if Edit Mode)
+    // 1. Add Source Image if available (Edit Mode)
     if (sourceImage) {
         parts.push({
             inlineData: {
@@ -447,44 +387,48 @@ export const generateImageFromText = async (
         });
     }
 
-    // 2. Add Prompt
+    // 2. Construct Prompt with Negative Prompt if present
     let finalPrompt = prompt;
     if (advancedSettings?.negativePrompt) {
-        finalPrompt += ` --no ${advancedSettings.negativePrompt}`;
+        // Appending negative prompt as text, as simple config might not be standard across all models/interfaces
+        finalPrompt += ` (Exclude: ${advancedSettings.negativePrompt})`;
     }
     
     parts.push({ text: finalPrompt });
 
     const config: any = {
         imageConfig: {
-            aspectRatio: aspectRatio 
+            aspectRatio: aspectRatio || "1:1"
         }
     };
-
-    if (advancedSettings?.seed !== undefined) {
-        config.seed = advancedSettings.seed;
+    
+    if (advancedSettings?.seed !== undefined && advancedSettings.seed !== null) {
+        config.seed = Number(advancedSettings.seed);
     }
 
+    // Call generateContent for nano banana series models
     const response = await ai.models.generateContent({
         model: modelId,
         contents: { parts },
         config: config
     });
 
-    // 3. Extract Generated Image
-    if (response.candidates && response.candidates[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-                const mimeType = part.inlineData.mimeType || 'image/png';
-                return `data:${mimeType};base64,${part.inlineData.data}`;
+    // Extract image from parts
+    if (response.candidates && response.candidates.length > 0) {
+        const content = response.candidates[0].content;
+        if (content && content.parts) {
+            for (const part of content.parts) {
+                if (part.inlineData) {
+                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                }
             }
         }
     }
-
-    throw new Error("No image generated by the model.");
-
-  } catch (error: any) {
-    console.error("Image generation error:", error);
-    throw new Error(error.message || "Failed to generate image");
-  }
+    
+    // Check if there is text explanation for failure (e.g., safety block)
+    if (response.text) {
+        throw new Error(`Model returned text instead of image: ${response.text.substring(0, 100)}...`);
+    }
+    
+    throw new Error("No image generated. The prompt might have triggered safety filters.");
 };

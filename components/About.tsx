@@ -55,7 +55,7 @@ export const About: React.FC<AboutProps> = ({ onBack }) => {
             </div>
             <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Gemini Vision Analysis</h4>
             <p className="text-base text-slate-500 dark:text-slate-400 leading-relaxed">
-              We use Google's <strong>Gemini 3 Pro</strong> and <strong>Flash 2.5</strong> models to "see" your images. 
+              We use Google's latest <strong>Gemini 2.5 Flash</strong> and <strong>Flash-Lite</strong> models to "see" your images. 
               It generates:
               <ul className="list-disc list-inside mt-2 space-y-1 opacity-80 pl-2">
                   <li>SEO Titles (55-150 chars)</li>

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Sliders, Type, AlignLeft, Hash, Info, ToggleRight, Check, Settings2, Sparkles, AlertTriangle } from 'lucide-react';
-import { GenerationSettings } from '../types';
+import { ChevronDown, ChevronUp, Sliders, Type, AlignLeft, Hash, Info, ToggleRight, Check, Settings2, Sparkles, AlertTriangle, Cpu, Zap, Eye } from 'lucide-react';
+import { GenerationSettings, ModelMode } from '../types';
 
 interface SettingsPanelProps {
   settings: GenerationSettings;
   onSettingsChange: (settings: GenerationSettings) => void;
+  modelMode: ModelMode;
+  onModelModeChange: (mode: ModelMode) => void;
 }
 
-export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettingsChange }) => {
+export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettingsChange, modelMode, onModelModeChange }) => {
   const [isOpen, setIsOpen] = useState(true);
 
   const handleToggle = (field: keyof GenerationSettings) => {
@@ -65,6 +67,88 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettin
       {isOpen && (
         <div className="p-6 pt-2 space-y-8 border-t border-slate-100 dark:border-gray-800">
           
+          {/* Model Selection */}
+          <div>
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+              AI Model Selection
+            </h4>
+            <div className="grid grid-cols-1 gap-2">
+                <button
+                    onClick={() => onModelModeChange(ModelMode.FAST)}
+                    className={`flex items-center justify-between p-3 rounded-lg border text-sm font-medium transition-all ${
+                        modelMode === ModelMode.FAST 
+                        ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-400' 
+                        : 'bg-white/50 dark:bg-transparent border-slate-200 dark:border-gray-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-gray-800'
+                    }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <Zap size={16} className={modelMode === ModelMode.FAST ? "text-emerald-500" : "text-slate-400"} />
+                        <div className="text-left">
+                            <span className="block font-bold">Flash Lite 2.5</span>
+                            <span className="text-xs opacity-80">Fastest, low cost</span>
+                        </div>
+                    </div>
+                    {modelMode === ModelMode.FAST && <Check size={16} />}
+                </button>
+
+                <button
+                    onClick={() => onModelModeChange(ModelMode.QUALITY)}
+                    className={`flex items-center justify-between p-3 rounded-lg border text-sm font-medium transition-all ${
+                        modelMode === ModelMode.QUALITY 
+                        ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-500/50 text-indigo-700 dark:text-indigo-400' 
+                        : 'bg-white/50 dark:bg-transparent border-slate-200 dark:border-gray-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-gray-800'
+                    }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <Sparkles size={16} className={modelMode === ModelMode.QUALITY ? "text-indigo-500" : "text-slate-400"} />
+                        <div className="text-left">
+                            <span className="block font-bold">Flash 2.5</span>
+                            <span className="text-xs opacity-80">Balanced, higher quality</span>
+                        </div>
+                    </div>
+                    {modelMode === ModelMode.QUALITY && <Check size={16} />}
+                </button>
+                
+                <button
+                    onClick={() => onModelModeChange(ModelMode.ROBOTICS)}
+                    className={`flex items-center justify-between p-3 rounded-lg border text-sm font-medium transition-all ${
+                        modelMode === ModelMode.ROBOTICS 
+                        ? 'bg-pink-50 dark:bg-pink-900/10 border-pink-500/50 text-pink-700 dark:text-pink-400' 
+                        : 'bg-white/50 dark:bg-transparent border-slate-200 dark:border-gray-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-gray-800'
+                    }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <Cpu size={16} className={modelMode === ModelMode.ROBOTICS ? "text-pink-500" : "text-slate-400"} />
+                        <div className="text-left">
+                            <span className="block font-bold">Robotics ER 1.5</span>
+                            <span className="text-xs opacity-80">High spatial reasoning</span>
+                        </div>
+                    </div>
+                    {modelMode === ModelMode.ROBOTICS && <Check size={16} />}
+                </button>
+
+                <button
+                    onClick={() => onModelModeChange(ModelMode.MISTRAL_PIXTRAL)}
+                    className={`flex items-center justify-between p-3 rounded-lg border text-sm font-medium transition-all ${
+                        modelMode === ModelMode.MISTRAL_PIXTRAL
+                        ? 'bg-orange-50 dark:bg-orange-900/10 border-orange-500/50 text-orange-700 dark:text-orange-400'
+                        : 'bg-white/50 dark:bg-transparent border-slate-200 dark:border-gray-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-gray-800'
+                    }`}
+                >
+                    <div className="flex items-center gap-3">
+                        <Eye size={16} className={modelMode === ModelMode.MISTRAL_PIXTRAL ? "text-orange-500" : "text-slate-400"} />
+                        <div className="text-left">
+                            <span className="block font-bold">Mistral Pixtral 12B</span>
+                            <span className="text-xs opacity-80">Vision Expert (Mistral AI)</span>
+                        </div>
+                    </div>
+                    {modelMode === ModelMode.MISTRAL_PIXTRAL && <Check size={16} />}
+                </button>
+            </div>
+          </div>
+
+          <div className="h-px bg-slate-100 dark:bg-gray-800" />
+
           {/* Output Limits */}
           <div className="space-y-4">
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
@@ -119,10 +203,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettin
             </h4>
 
             {[
-                { key: 'silhouette', label: 'Silhouette', desc: 'Detect shadows' },
-                { key: 'whiteBackground', label: 'White BG', desc: 'Isolated' },
-                { key: 'transparentBackground', label: 'Transparent BG', desc: 'Isolated PNG' },
-                { key: 'singleWordKeywords', label: 'Single Words', desc: 'No phrases' }
+                { key: 'silhouette', label: 'Silhouette Mode', desc: 'Detect shadows & forced tagging' },
+                { key: 'whiteBackground', label: 'Force White BG', desc: 'Detect & label isolated white' },
+                { key: 'transparentBackground', label: 'Transparent BG', desc: 'Detect alpha channel & label' },
+                { key: 'singleWordKeywords', label: 'Single Words', desc: 'Prevent multi-word phrases' }
             ].map((item) => (
                 <div key={item.key} className="flex items-center justify-between group cursor-pointer p-3 -mx-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg transition-colors" onClick={() => handleToggle(item.key as keyof GenerationSettings)}>
                     <div>
@@ -164,7 +248,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettin
                         <textarea
                             value={settings.customPromptText}
                             onChange={(e) => handleChange('customPromptText', e.target.value)}
-                            placeholder="Add extra instructions..."
+                            placeholder="Add extra instructions (e.g., 'Mention the color red in title')..."
                             className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg p-3 text-sm text-slate-700 dark:text-gray-300 focus:ring-1 focus:ring-indigo-500 outline-none resize-none h-24 animate-in fade-in"
                         />
                     )}
@@ -187,7 +271,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettin
                         <textarea
                             value={settings.prohibitedWordsText}
                             onChange={(e) => handleChange('prohibitedWordsText', e.target.value)}
-                            placeholder="Words to avoid..."
+                            placeholder="Words to avoid (e.g., watermark, nude, blurry)..."
                             className="w-full bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-500/20 rounded-lg p-3 text-sm text-slate-700 dark:text-gray-300 focus:ring-1 focus:ring-red-500 outline-none resize-none h-24 animate-in fade-in placeholder:text-red-300"
                         />
                     )}
