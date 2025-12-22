@@ -192,7 +192,7 @@ function App() {
     for (const f of toProcess) {
         if (stopBatchRef.current) break;
         await processFile(f);
-        if (!stopBatchRef.current) await new Promise(resolve => setTimeout(resolve, 3000));
+        if (!stopBatchRef.current) await new Promise(resolve => setTimeout(resolve, modelMode === ModelMode.MISTRAL_PIXTRAL ? 2000 : 3000));
     }
 
     setIsBatchProcessing(false);
@@ -368,7 +368,7 @@ function App() {
         {view === 'about' ? (
            <About onBack={() => setView('generator')} />
         ) : view === 'prompts' ? (
-           <PromptGenerator apiKey={geminiKey} onBack={() => setView('generator')} />
+           <PromptGenerator geminiKey={geminiKey} mistralKey={mistralKey} onBack={() => setView('generator')} />
         ) : view === 'calendar' ? (
            <EventCalendar onBack={() => setView('generator')} />
         ) : (
