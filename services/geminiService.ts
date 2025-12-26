@@ -18,17 +18,13 @@ function parseKeys(apiKeyString: string | undefined): string[] {
 
 // --- HELPER: CONSTRUCT PROMPT ---
 function buildSystemPrompt(settings?: GenerationSettings, mimeType?: string): string {
-  const titleMin = settings?.titleWordCountMin || 7;
-  const titleMax = settings?.titleWordCountMax || 25;
-  const descMin = settings?.descriptionWordCountMin || 12;
-  const descMax = settings?.descriptionWordCountMax || 40;
-  const kwMin = settings?.keywordCountMin || 25;
-  const kwMax = settings?.keywordCountMax || 49;
+  const kwMin = settings?.keywordCountMin || 15;
+  const kwMax = settings?.keywordCountMax || 35;
 
   let detectionRules = "";
   
   if (settings?.transparentBackground) {
-      detectionRules += `- CHECK ALPHA CHANNEL: If the image appears to be a PNG, WebP, EPS, or AI file and has an alpha channel (transparent background), the Title MUST end with "Isolated on Transparent Background". Keywords MUST include "transparent", "background", "isolated".\n`;
+      detectionRules += `- CHECK ALPHA CHANNEL: If the image has an alpha channel (transparent background), the Title MUST end with "Isolated on Transparent Background". Keywords MUST include "transparent", "background", "isolated".\n`;
   }
 
   if (settings?.whiteBackground) {
@@ -51,8 +47,8 @@ function buildSystemPrompt(settings?: GenerationSettings, mimeType?: string): st
   }
 
   return `
-    You are an elite Stock Photography Metadata Expert for Adobe Stock, Shutterstock, and Getty Images.
-    YOUR GOAL: Maximize SEO discoverability and sales conversion.
+    You are an elite Stock Photography Metadata Expert specialized in Adobe Stock and Shutterstock.
+    YOUR GOAL: Maximize SEO discoverability while adhering strictly to agency standards.
     
     STRICT JSON OUTPUT FORMAT REQUIRED:
     {
@@ -62,16 +58,22 @@ function buildSystemPrompt(settings?: GenerationSettings, mimeType?: string): st
       "category": "string"
     }
 
-    === 1. TITLE GUIDELINES (Adobe Rule) ===
-    - Length: ${titleMin}-${titleMax} words.
-    - Style: Factual, descriptive, natural sentence. NO "Image of", "Photo of".
+    === 1. TITLE GUIDELINES (Agency Best Practices) ===
+    - Length: Short and descriptive. STRICTLY UNDER 70 CHARACTERS.
+    - Style: Factual, neutral, and descriptive. Avoid "Photo of", "Image of", or excessive adjectives.
+    - Content: Focus on the main subject, action, and setting.
     
     === 2. KEYWORD GUIDELINES ===
-    - Quantity: ${kwMin}-${kwMax} keywords.
+    - Quantity: Between ${kwMin} and ${kwMax} highly relevant keywords.
     - **CRITICAL: ORDER MATTERS**. Relevancy descending.
+    - Rank 1-10: Main subject and literal visual elements (e.g., "Dog", "Running", "Park").
+    - Rank 11+: Contextual, conceptual, and emotional keywords (e.g., "Happiness", "Outdoor", "Summer").
+    - No keyword spamming. All keywords must be in English.
+    - DO NOT include brands, trademarks, or names of celebrities.
     
     === 3. DESCRIPTION ===
-    - Length: ${descMin}-${descMax} words.
+    - Format: 1-2 paragraphs, SEO-friendly.
+    - Style: Natural, descriptive sentences that expand on the visual details and story of the image.
 
     === DETECTION RULES ===
     ${detectionRules}

@@ -50,12 +50,12 @@ function App() {
     customPromptText: '',
     prohibitedWordsEnabled: false,
     prohibitedWordsText: '',
-    titleWordCountMin: 8,
-    titleWordCountMax: 25,
-    descriptionWordCountMin: 8,
-    descriptionWordCountMax: 40,
-    keywordCountMin: 25,
-    keywordCountMax: 50
+    titleWordCountMin: 5,
+    titleWordCountMax: 15, // Roughly targeting under 70 chars
+    descriptionWordCountMin: 15,
+    descriptionWordCountMax: 45,
+    keywordCountMin: 15,
+    keywordCountMax: 35
   });
   
   const [isDarkMode, setIsDarkMode] = useState(() => {

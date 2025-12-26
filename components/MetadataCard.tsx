@@ -238,16 +238,18 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                 {/* Title */}
                 <div className="group/field relative">
                    <div className="flex justify-between items-center mb-3">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 group-focus-within/field:text-indigo-600 transition-colors">
-                         Title
-                         <span className={`px-2 py-0.5 rounded text-[10px] ${
-                             displayMetadata.title.split(' ').length < 8 || displayMetadata.title.split(' ').length > 25
-                             ? 'bg-amber-50 text-amber-600' 
-                             : 'bg-emerald-50 text-emerald-600'
-                         }`}>
-                             {displayMetadata.title.split(' ').length}w
-                         </span>
-                      </label>
+                      <div className="flex items-center gap-2">
+                          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest group-focus-within/field:text-indigo-600 transition-colors">
+                            Title
+                          </label>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              displayMetadata.title.length > 70
+                              ? 'bg-red-50 text-red-600' 
+                              : 'bg-emerald-50 text-emerald-600'
+                          }`}>
+                              {displayMetadata.title.length} / 70 chars
+                          </span>
+                      </div>
                       <button onClick={() => copyToClipboard(displayMetadata.title, 'title')} className="opacity-0 group-hover/field:opacity-100 text-slate-400 hover:text-indigo-600 transition-all p-1">
                           {copiedField === 'title' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
                       </button>
@@ -265,15 +267,8 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                 {/* Description */}
                 <div className="group/field relative">
                    <div className="flex justify-between items-center mb-3">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 group-focus-within/field:text-indigo-600 transition-colors">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest group-focus-within/field:text-indigo-600 transition-colors">
                          Description
-                         <span className={`px-2 py-0.5 rounded text-[10px] ${
-                             displayMetadata.description.split(' ').length < 8 || displayMetadata.description.split(' ').length > 40
-                             ? 'bg-amber-50 text-amber-600' 
-                             : 'bg-emerald-50 text-emerald-600'
-                         }`}>
-                             {displayMetadata.description.split(' ').length}w
-                         </span>
                       </label>
                       <button onClick={() => copyToClipboard(displayMetadata.description, 'description')} className="opacity-0 group-hover/field:opacity-100 text-slate-400 hover:text-indigo-600 transition-all p-1">
                           {copiedField === 'description' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
@@ -295,11 +290,11 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
                       <div className="flex items-center gap-3">
                           <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Keywords</label>
                           <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                              displayMetadata.keywords.length < 25 || displayMetadata.keywords.length > 50 
+                              displayMetadata.keywords.length < 15 || displayMetadata.keywords.length > 35 
                               ? 'bg-amber-50 text-amber-600' 
                               : 'bg-slate-100 text-slate-500'
                           }`}>
-                              {displayMetadata.keywords.length}
+                              {displayMetadata.keywords.length} / 35
                           </span>
                       </div>
                       
