@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Sliders, Type, AlignLeft, Hash, Info, ToggleRight, Check, Settings2, Sparkles, AlertTriangle, Cpu, Zap, Eye } from 'lucide-react';
+import { ChevronDown, Sliders, Type, AlignLeft, Hash, Check, Settings2, Sparkles, AlertTriangle, Zap, Eye } from 'lucide-react';
 import { GenerationSettings, ModelMode } from '../types';
 
 interface SettingsPanelProps {
@@ -110,24 +110,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettin
                 </button>
                 
                 <button
-                    onClick={() => onModelModeChange(ModelMode.ROBOTICS)}
-                    className={`flex items-center justify-between p-3 rounded-lg border text-sm font-medium transition-all ${
-                        modelMode === ModelMode.ROBOTICS 
-                        ? 'bg-pink-50 dark:bg-pink-900/10 border-pink-500/50 text-pink-700 dark:text-pink-400' 
-                        : 'bg-white/50 dark:bg-transparent border-slate-200 dark:border-gray-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-gray-800'
-                    }`}
-                >
-                    <div className="flex items-center gap-3">
-                        <Cpu size={16} className={modelMode === ModelMode.ROBOTICS ? "text-pink-500" : "text-slate-400"} />
-                        <div className="text-left">
-                            <span className="block font-bold">Robotics ER 1.5</span>
-                            <span className="text-xs opacity-80">High spatial reasoning</span>
-                        </div>
-                    </div>
-                    {modelMode === ModelMode.ROBOTICS && <Check size={16} />}
-                </button>
-
-                <button
                     onClick={() => onModelModeChange(ModelMode.MISTRAL_PIXTRAL)}
                     className={`flex items-center justify-between p-3 rounded-lg border text-sm font-medium transition-all ${
                         modelMode === ModelMode.MISTRAL_PIXTRAL
@@ -139,7 +121,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettin
                         <Eye size={16} className={modelMode === ModelMode.MISTRAL_PIXTRAL ? "text-orange-500" : "text-slate-400"} />
                         <div className="text-left">
                             <span className="block font-bold">Mistral Pixtral 12B</span>
-                            <span className="text-xs opacity-80">Vision Expert (Mistral AI)</span>
+                            <span className="text-xs opacity-80">Vision Expert</span>
                         </div>
                     </div>
                     {modelMode === ModelMode.MISTRAL_PIXTRAL && <Check size={16} />}

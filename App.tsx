@@ -13,8 +13,6 @@ import { EventCalendar } from './components/EventCalendar';
 import { Trash2, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, Info, Home, Layers, XCircle, Wand2, Calendar } from 'lucide-react';
 import JSZip from 'jszip';
 
-const MAX_PARALLEL_UPLOADS = 3;
-
 function App() {
   const [user, setUser] = useState<{name: string, email: string, avatar: string}>({
     name: 'StockMeta User',
@@ -51,7 +49,7 @@ function App() {
     prohibitedWordsEnabled: false,
     prohibitedWordsText: '',
     titleWordCountMin: 5,
-    titleWordCountMax: 15, // Roughly targeting under 70 chars
+    titleWordCountMax: 15, 
     descriptionWordCountMin: 15,
     descriptionWordCountMax: 45,
     keywordCountMin: 15,
@@ -77,7 +75,7 @@ function App() {
     }
   }, [isDarkMode]);
 
-  // LOAD SAVED KEYS & PROVIDER
+  // LOAD SAVED KEYS
   useEffect(() => {
     const gKey = localStorage.getItem('gemini_api_key');
     if (gKey) setGeminiKey(gKey);
@@ -192,7 +190,7 @@ function App() {
     for (const f of toProcess) {
         if (stopBatchRef.current) break;
         await processFile(f);
-        if (!stopBatchRef.current) await new Promise(resolve => setTimeout(resolve, modelMode === ModelMode.MISTRAL_PIXTRAL ? 2000 : 3000));
+        if (!stopBatchRef.current) await new Promise(resolve => setTimeout(resolve, 2500));
     }
 
     setIsBatchProcessing(false);
@@ -378,7 +376,7 @@ function App() {
                   <h2 className={`text-5xl font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Metadata Workspace</h2>
                   <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-slate-500'}`}>
                     AI Power: <strong className="text-indigo-500">
-                      {modelMode === ModelMode.MISTRAL_PIXTRAL ? 'Mistral Pixtral 12B' : 'Gemini 2.5 Flash & Lite'}
+                      {modelMode === ModelMode.MISTRAL_PIXTRAL ? 'Mistral' : 'Gemini'}
                     </strong>.
                   </p>
                 </div>

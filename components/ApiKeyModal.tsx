@@ -9,7 +9,13 @@ interface ApiKeyModalProps {
   currentMistralKey?: string;
 }
 
-export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSave, currentGeminiKey, currentMistralKey = '' }) => {
+export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  currentGeminiKey, 
+  currentMistralKey = ''
+}) => {
   const [activeTab, setActiveTab] = useState<'GEMINI' | 'MISTRAL'>('GEMINI');
   
   const [geminiKeys, setGeminiKeys] = useState<string[]>([]);
@@ -77,7 +83,6 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
   if (!isOpen) return null;
 
   const currentKeys = activeTab === 'GEMINI' ? geminiKeys : mistralKeys;
-  const activeColor = activeTab === 'GEMINI' ? 'indigo' : 'orange';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -91,7 +96,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
               API Key Management
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Manage keys for multiple AI providers.
+              Manage keys for high-performance AI providers.
             </p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
@@ -100,26 +105,26 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
         </div>
         
         {/* Tabs */}
-        <div className="flex p-2 gap-2 bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex p-2 gap-1.5 bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800">
             <button
                 onClick={() => { setActiveTab('GEMINI'); setInputValue(''); setError(null); }}
-                className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                     activeTab === 'GEMINI' 
                     ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700' 
                     : 'text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
                 }`}
             >
-                <Zap size={16} /> Google Gemini
+                <Zap size={14} /> Gemini
             </button>
             <button
                 onClick={() => { setActiveTab('MISTRAL'); setInputValue(''); setError(null); }}
-                className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                     activeTab === 'MISTRAL' 
                     ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200 dark:border-slate-700' 
                     : 'text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
                 }`}
             >
-                 <span className="font-mono text-lg leading-none">M</span> Mistral AI
+                 <span className="font-mono text-sm leading-none">M</span> Mistral
             </button>
         </div>
 
@@ -128,8 +133,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
           
           <div className="space-y-3 mb-6">
             <div className="flex justify-between items-center">
-               <label className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'GEMINI' ? 'text-indigo-500' : 'text-orange-500'}`}>
-                 {activeTab === 'GEMINI' ? 'Gemini Keys' : 'Mistral Keys'} ({currentKeys.length})
+               <label className={`text-xs font-bold uppercase tracking-wider ${
+                 activeTab === 'GEMINI' ? 'text-indigo-500' : 'text-orange-500'
+               }`}>
+                 {activeTab} Keys ({currentKeys.length})
                </label>
                {currentKeys.length > 0 && (
                  <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full">
@@ -141,9 +148,15 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
             <div className="space-y-2">
               {currentKeys.length > 0 ? (
                 currentKeys.map((k, i) => (
-                  <div key={i} className={`group flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all ${activeTab === 'GEMINI' ? 'hover:border-indigo-300 dark:hover:border-indigo-700' : 'hover:border-orange-300 dark:hover:border-orange-700'}`}>
+                  <div key={i} className={`group flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all ${
+                    activeTab === 'GEMINI' ? 'hover:border-indigo-300 dark:hover:border-indigo-700' : 
+                    'hover:border-orange-300 dark:hover:border-orange-700'
+                  }`}>
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${i === 0 ? (activeTab === 'GEMINI' ? 'bg-indigo-500 animate-pulse' : 'bg-orange-500 animate-pulse') : 'bg-slate-300 dark:bg-slate-600'}`} />
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${i === 0 ? (
+                        activeTab === 'GEMINI' ? 'bg-indigo-500 animate-pulse' : 
+                        'bg-orange-500 animate-pulse'
+                      ) : 'bg-slate-300 dark:bg-slate-600'}`} />
                       <code className="font-mono text-sm text-slate-600 dark:text-slate-300 truncate">
                         {maskKey(k)}
                       </code>
@@ -160,15 +173,17 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
               ) : (
                 <div className="text-center py-10 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
                   <Key size={32} className="mx-auto mb-3 opacity-20" />
-                  <p className="text-sm font-medium">No {activeTab === 'GEMINI' ? 'Gemini' : 'Mistral'} Keys added.</p>
+                  <p className="text-sm font-medium">No {activeTab} Keys added.</p>
                 </div>
               )}
             </div>
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-             <label className={`text-xs font-bold uppercase tracking-wider mb-2 block ${activeTab === 'GEMINI' ? 'text-indigo-500' : 'text-orange-500'}`}>
-               Add New {activeTab === 'GEMINI' ? 'Gemini' : 'Mistral'} Key
+             <label className={`text-xs font-bold uppercase tracking-wider mb-2 block ${
+               activeTab === 'GEMINI' ? 'text-indigo-500' : 'text-orange-500'
+             }`}>
+               Add New {activeTab} Key
              </label>
              <div className="flex gap-2">
                <input 
@@ -178,13 +193,19 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
                     if(error) setError(null);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddKey()}
-                  placeholder={`Paste ${activeTab === 'GEMINI' ? 'Gemini' : 'Mistral'} API Key...`}
-                  className={`flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm font-mono text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition-shadow focus:ring-2 ${activeTab === 'GEMINI' ? 'focus:ring-indigo-500' : 'focus:ring-orange-500'}`}
+                  placeholder={`Paste ${activeTab} API Key...`}
+                  className={`flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm font-mono text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none transition-shadow focus:ring-2 ${
+                    activeTab === 'GEMINI' ? 'focus:ring-indigo-500' : 
+                    'focus:ring-orange-500'
+                  }`}
                />
                <button 
                   onClick={handleAddKey}
                   disabled={!inputValue.trim()}
-                  className={`text-white px-4 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${activeTab === 'GEMINI' ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20' : 'bg-orange-600 hover:bg-orange-500 shadow-orange-500/20'}`}
+                  className={`text-white px-4 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    activeTab === 'GEMINI' ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20' : 
+                    'bg-orange-600 hover:bg-orange-500 shadow-orange-500/20'
+                  }`}
                >
                   <Plus size={18} />
                   Add
@@ -198,10 +219,16 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onSav
              <div className="mt-3 text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-between">
                 <span className="flex items-center gap-1.5"><ShieldCheck size={12}/> Keys stored locally.</span>
                 <a 
-                   href={activeTab === 'GEMINI' ? "https://aistudio.google.com/app/apikey" : "https://console.mistral.ai/api-keys/"}
+                   href={
+                     activeTab === 'GEMINI' ? "https://aistudio.google.com/app/apikey" : 
+                     "https://console.mistral.ai/api-keys/"
+                   }
                    target="_blank" 
                    rel="noopener noreferrer" 
-                   className={`${activeTab === 'GEMINI' ? 'text-indigo-500' : 'text-orange-500'} hover:underline flex items-center gap-1`}
+                   className={`${
+                     activeTab === 'GEMINI' ? 'text-indigo-500' : 
+                     'text-orange-500'
+                   } hover:underline flex items-center gap-1`}
                 >
                    Get Free Key <Info size={10} />
                 </a>

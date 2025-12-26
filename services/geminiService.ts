@@ -2,9 +2,9 @@ import { GoogleGenAI, Schema, Type } from "@google/genai";
 import { StockMetadata, ModelMode, GenerationSettings } from "../types";
 
 // --- GEMINI CONFIG ---
-const GEMINI_MODEL_FAST = "gemini-2.5-flash-lite"; 
-const GEMINI_MODEL_QUALITY = "gemini-2.5-flash";
-const GEMINI_MODEL_ROBOTICS = "gemini-robotics-er-1.5-preview"; 
+const GEMINI_MODEL_FAST = "gemini-3-flash-preview"; 
+const GEMINI_MODEL_QUALITY = "gemini-3-flash-preview";
+const GEMINI_MODEL_ROBOTICS = "gemini-3-flash-preview"; 
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -65,9 +65,7 @@ function buildSystemPrompt(settings?: GenerationSettings, mimeType?: string): st
     
     === 2. KEYWORD GUIDELINES ===
     - Quantity: Between ${kwMin} and ${kwMax} highly relevant keywords.
-    - **CRITICAL: ORDER MATTERS**. Relevancy descending.
-    - Rank 1-10: Main subject and literal visual elements (e.g., "Dog", "Running", "Park").
-    - Rank 11+: Contextual, conceptual, and emotional keywords (e.g., "Happiness", "Outdoor", "Summer").
+    - **CRITICAL: ORDER BY IMPORTANCE**. Main subject first, no spam.
     - No keyword spamming. All keywords must be in English.
     - DO NOT include brands, trademarks, or names of celebrities.
     
@@ -180,6 +178,7 @@ export const generateImageMetadata = async (
 
   const systemPrompt = buildSystemPrompt(settings, mimeType);
   
+  // Mistral Logic
   if (mode === ModelMode.MISTRAL_PIXTRAL) {
       const response = await callMistralChat(keys[0], systemPrompt, [
           { type: "text", text: "Analyze this image and generate metadata." },
@@ -188,6 +187,7 @@ export const generateImageMetadata = async (
       return JSON.parse(response.text) as StockMetadata;
   }
 
+  // Gemini Logic
   let modelId = GEMINI_MODEL_FAST;
   if (mode === ModelMode.QUALITY) modelId = GEMINI_MODEL_QUALITY;
   else if (mode === ModelMode.ROBOTICS) modelId = GEMINI_MODEL_ROBOTICS;
