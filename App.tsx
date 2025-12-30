@@ -309,9 +309,17 @@ function App() {
   const isAnyProviderConnected = geminiKey || geminiSystemConnected || groqKey || mistralKey;
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-500 ${isDarkMode ? 'bg-[#050505]' : 'bg-[#f8fafc]'}`}>
-      <div className="fixed inset-0 z-0 pointer-events-none">
-         <div className={`absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b ${isDarkMode ? 'bg-indigo-900/10' : 'bg-indigo-100/50'}`} />
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-700 ${isDarkMode ? 'bg-[#050505]' : 'bg-[#fcfdfe]'}`}>
+      
+      {/* Dynamic Background System */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+         {/* Theme-based Mesh Blobs */}
+         <div className={`absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full blur-[120px] mix-blend-screen animate-blob ${isDarkMode ? 'bg-indigo-900/40' : 'bg-blue-100/60'}`} />
+         <div className={`absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full blur-[140px] mix-blend-screen animate-blob-reverse delay-700 ${isDarkMode ? 'bg-violet-900/30' : 'bg-indigo-100/50'}`} />
+         <div className={`absolute top-[20%] right-[15%] w-[35vw] h-[35vw] rounded-full blur-[110px] mix-blend-screen animate-blob delay-1000 ${isDarkMode ? 'bg-indigo-800/20' : 'bg-sky-50/60'}`} />
+         
+         {/* Static Gradient Overlay for Depth */}
+         <div className={`absolute inset-0 transition-opacity duration-1000 ${isDarkMode ? 'bg-gradient-to-tr from-black via-transparent to-black opacity-80' : 'bg-gradient-to-tr from-white via-transparent to-white opacity-40'}`} />
       </div>
 
       <ApiKeyModal 
@@ -324,10 +332,10 @@ function App() {
       />
       <BulkKeywordModal isOpen={isBulkModalOpen} onClose={() => setIsBulkModalOpen(false)} onApply={handleBulkApply} selectedCount={selectedIds.size} />
 
-      <header className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505]/80 border-white/5' : 'bg-white/70 border-white/40 shadow-sm'}`}>
+      <header className={`sticky top-0 z-50 backdrop-blur-2xl border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505]/80 border-white/5' : 'bg-white/70 border-white/40 shadow-sm'}`}>
         <div className="max-w-[1920px] mx-auto px-6 md:px-10 flex items-center justify-between py-4">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView('generator')}>
-            <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-gradient-to-tr from-indigo-600 to-violet-600' : 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20'}`}>
+            <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-gradient-to-tr from-indigo-600 to-violet-600 shadow-lg shadow-indigo-900/40' : 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20'}`}>
               <Layers className="w-5 h-5 text-white" />
             </div>
             <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>StockMeta<span className="font-light opacity-70">AI</span></h1>
@@ -341,7 +349,7 @@ function App() {
                    { id: 'calendar', icon: Calendar, label: 'Calendar' },
                    { id: 'about', icon: Info, label: 'About' }
                  ].map((item) => (
-                    <button key={item.id} onClick={() => setView(item.id as any)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === item.id ? (isDarkMode ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-900') : (isDarkMode ? 'text-gray-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}>
+                    <button key={item.id} onClick={() => setView(item.id as any)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === item.id ? (isDarkMode ? 'bg-white/10 text-white' : 'bg-slate-200/50 text-slate-900') : (isDarkMode ? 'text-gray-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}>
                       <item.icon size={16} /> <span>{item.label}</span>
                     </button>
                  ))}
@@ -372,7 +380,7 @@ function App() {
           <div className="flex flex-col gap-10 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-200 dark:border-white/5">
                 <div>
-                  <h2 className={`text-5xl font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Workspace</h2>
+                  <h2 className={`text-5xl font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Advance Metadata Generate</h2>
                 </div>
             </div>
 
@@ -383,7 +391,7 @@ function App() {
                  <div className="lg:col-span-9 order-1 lg:order-2 space-y-8">
                     <FileUploader onFilesSelected={handleFilesSelected} disabled={isBatchProcessing} />
                     {files.length > 0 && (
-                      <div className={`rounded-xl border shadow-xl transition-all overflow-hidden ${isDarkMode ? 'bg-[#111827] border-white/10' : 'bg-white/90 border-white/60 backdrop-blur-md'}`}>
+                      <div className={`rounded-xl border shadow-xl transition-all overflow-hidden ${isDarkMode ? 'bg-[#0a0a0c]/80 border-white/10 backdrop-blur-xl' : 'bg-white/90 border-white/60 backdrop-blur-md'}`}>
                         {isBatchProcessing && <div className="absolute top-0 left-0 right-0 h-[3px] bg-gray-100 dark:bg-gray-800"><div className="h-full bg-indigo-500 transition-all duration-300 ease-out" style={{ width: `${progressPercent}%` }}/></div>}
                         <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-4 p-4">
                            <div className="flex items-center gap-4">
@@ -428,7 +436,7 @@ function App() {
         )}
       </main>
 
-      {/* --- FOOTER UPDATE --- */}
+      {/* Footer */}
       <footer className={`mt-auto border-t transition-all duration-300 ${isDarkMode ? 'bg-[#050505]/80 border-white/5 text-slate-400' : 'bg-white text-slate-500 border-slate-200'}`}>
         <div className="max-w-[1920px] mx-auto px-6 md:px-10 py-12 lg:py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-12">
