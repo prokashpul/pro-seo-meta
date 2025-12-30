@@ -196,24 +196,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettin
 
           <div className="h-px bg-slate-100 dark:bg-gray-800" />
 
-          {/* Toggles */}
+          {/* Detection Logic */}
           <div className="space-y-4">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
-               Image Logic
+            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-3">
+               Detection Logic
             </h4>
 
             {[
-                { key: 'silhouette', label: 'Silhouette Mode', desc: 'Auto-detect shadow subjects' },
-                { key: 'whiteBackground', label: 'Isolated White', desc: 'Force isolated bg tagging' },
-                { key: 'transparentBackground', label: 'Isolated Alpha', desc: 'Detect transparency' },
-                { key: 'singleWordKeywords', label: 'Single Words Only', desc: 'Strip keyword phrases' }
+                { key: 'silhouette', label: 'Silhouette Mode', desc: 'Detect shadows & forced tagging' },
+                { key: 'whiteBackground', label: 'Force White BG', desc: 'Detect & label isolated white' },
+                { key: 'transparentBackground', label: 'Transparent BG', desc: 'Detect alpha channel & label' },
+                { key: 'singleWordKeywords', label: 'Single Words', desc: 'Prevent multi-word phrases' }
             ].map((item) => (
                 <div key={item.key} className="flex items-center justify-between group cursor-pointer p-3 -mx-3 hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg transition-colors" onClick={() => handleToggle(item.key as keyof GenerationSettings)}>
-                    <div>
+                    <div className="pr-4">
                         <p className="text-sm font-bold text-slate-700 dark:text-gray-300">{item.label}</p>
                         <p className="text-xs text-slate-400">{item.desc}</p>
                     </div>
-                    <div className={`w-11 h-6 rounded-full transition-colors relative ${
+                    <div className={`shrink-0 w-11 h-6 rounded-full transition-colors relative ${
                             settings[item.key as keyof GenerationSettings] 
                             ? 'bg-indigo-600' 
                             : 'bg-slate-200 dark:bg-gray-700'
@@ -254,11 +254,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettin
                     )}
                </div>
 
-               {/* Prohibited Words */}
+               {/* Negative Words */}
                <div>
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-sm font-bold text-slate-700 dark:text-gray-300 flex items-center gap-2">
-                            <AlertTriangle size={16} /> Restricted Words
+                            <AlertTriangle size={16} /> Negative Words
                         </span>
                         <div 
                             onClick={() => handleToggle('prohibitedWordsEnabled')}
