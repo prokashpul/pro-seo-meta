@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Check, TrendingUp, RefreshCw, X, AlertCircle, Cloud, Loader2, FileType, Sparkles, Trash2, FilterX, Maximize2, MoreHorizontal, PenLine, GripVertical } from 'lucide-react';
 import { UploadedFile, StockMetadata, ProcessingStatus } from '../types';
@@ -91,7 +92,8 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
     if (!localMetadata?.keywords) return;
     setIsSearchingTrends(true);
     try {
-      const trends = await getTrendingKeywords(localMetadata.keywords, apiKey);
+      // getTrendingKeywords only accepts one argument: baseKeywords: string[]
+      const trends = await getTrendingKeywords(localMetadata.keywords);
       if (trends.length > 0) onAddTrending(item.id, trends);
     } catch (e) {
       console.error("Failed to fetch trends", e);

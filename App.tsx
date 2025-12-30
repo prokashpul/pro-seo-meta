@@ -14,14 +14,7 @@ import { Trash2, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key
 import JSZip from 'jszip';
 
 function App() {
-  const [user, setUser] = useState<{name: string, email: string, avatar: string}>({
-    name: 'StockMeta User',
-    email: 'user@example.com',
-    avatar: 'https://ui-avatars.com/api/?name=User&background=6366f1&color=fff' 
-  });
-  
-  // --- PROVIDER & KEY STATE ---
-  const [geminiKey, setGeminiKey] = useState<string>('');
+  const [groqKey, setGroqKey] = useState<string>('');
   const [mistralKey, setMistralKey] = useState<string>('');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   
@@ -77,17 +70,16 @@ function App() {
 
   // LOAD SAVED KEYS
   useEffect(() => {
-    const gKey = localStorage.getItem('gemini_api_key');
-    if (gKey) setGeminiKey(gKey);
-
+    const grKey = localStorage.getItem('groq_api_key');
     const mKey = localStorage.getItem('mistral_api_key');
+    if (grKey) setGroqKey(grKey);
     if (mKey) setMistralKey(mKey);
   }, []);
 
-  const handleSaveApiKey = (provider: 'GEMINI' | 'MISTRAL', key: string) => {
-      if (provider === 'GEMINI') {
-          setGeminiKey(key);
-          localStorage.setItem('gemini_api_key', key);
+  const handleSaveApiKey = (provider: 'GEMINI' | 'GROQ' | 'MISTRAL', key: string) => {
+      if (provider === 'GROQ') {
+          setGroqKey(key);
+          localStorage.setItem('groq_api_key', key);
       } else if (provider === 'MISTRAL') {
           setMistralKey(key);
           localStorage.setItem('mistral_api_key', key);
@@ -102,28 +94,28 @@ function App() {
 
     try {
       setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: ProcessingStatus.ANALYZING } : f));
-      
       const { base64, mimeType } = await optimizeImage(fileObj.file);
       
-      // Determine which key to use based on mode
-      let activeKey = geminiKey;
-      if (modelMode === ModelMode.MISTRAL_PIXTRAL) {
-          activeKey = mistralKey;
+      let externalKey = "";
+      if (modelMode === ModelMode.GROQ_VISION) externalKey = groqKey;
+      if (modelMode === ModelMode.MISTRAL_PIXTRAL) externalKey = mistralKey;
+
+      if ((modelMode === ModelMode.GROQ_VISION || modelMode === ModelMode.MISTRAL_PIXTRAL) && !externalKey) {
+          throw new Error(`${modelMode === ModelMode.GROQ_VISION ? 'Groq' : 'Mistral'} API Key missing`);
       }
 
       const metadata = await generateImageMetadata(
           base64,
           mimeType,
           modelMode,
-          activeKey,
+          externalKey,
           generationSettings
       );
       
       setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: ProcessingStatus.COMPLETED, metadata } : f));
     } catch (error) {
       const errorMsg = (error as Error).message;
-      if (errorMsg.includes("Missing") || errorMsg.includes("Key")) setIsApiKeyModalOpen(true);
-
+      if (errorMsg.includes("Key")) setIsApiKeyModalOpen(true);
       setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: ProcessingStatus.ERROR, error: errorMsg } : f));
     }
   };
@@ -157,15 +149,6 @@ function App() {
                          status: ProcessingStatus.IDLE,
                          vectorFile: group.vector
                      });
-                } else if (group.vector) {
-                    newFileList.push({
-                        id: Math.random().toString(36).substring(7),
-                        file: group.vector,
-                        previewUrl: "", 
-                        status: ProcessingStatus.ERROR,
-                        error: "Missing Preview Image",
-                        vectorFile: group.vector 
-                    });
                 }
             }
         });
@@ -174,13 +157,6 @@ function App() {
   }, []);
 
   const handleGenerateAll = async () => {
-    const activeKey = modelMode === ModelMode.MISTRAL_PIXTRAL ? mistralKey : geminiKey;
-
-    if (!activeKey && !process.env.API_KEY) {
-        setIsApiKeyModalOpen(true);
-        return;
-    }
-    
     const toProcess = filteredFiles.filter(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR);
     if (toProcess.length === 0) return;
 
@@ -190,7 +166,10 @@ function App() {
     for (const f of toProcess) {
         if (stopBatchRef.current) break;
         await processFile(f);
-        if (!stopBatchRef.current) await new Promise(resolve => setTimeout(resolve, 2500));
+        if (!stopBatchRef.current) {
+            const delay = (modelMode === ModelMode.GROQ_VISION || modelMode === ModelMode.MISTRAL_PIXTRAL) ? 3000 : 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
     }
 
     setIsBatchProcessing(false);
@@ -199,8 +178,6 @@ function App() {
   const handleStopBatch = () => { stopBatchRef.current = true; setIsBatchProcessing(false); };
   
   const handleRegenerate = (id: string) => {
-    const activeKey = modelMode === ModelMode.MISTRAL_PIXTRAL ? mistralKey : geminiKey;
-    if (!activeKey) { setIsApiKeyModalOpen(true); return; }
     const file = files.find(f => f.id === id);
     if (file) processFile(file);
   };
@@ -225,15 +202,15 @@ function App() {
   };
 
   const handleExportZip = async () => {
-    const completedFiles = files.filter(f => f.status === ProcessingStatus.COMPLETED && f.metadata);
-    if (completedFiles.length === 0) return;
+    const completedFilesList = files.filter(f => f.status === ProcessingStatus.COMPLETED && f.metadata);
+    if (completedFilesList.length === 0) return;
     setIsExporting(true);
     try {
       const zip = new JSZip();
       const usedFilenames = new Set<string>();
       const csvRows = [['Filename', 'Title', 'Description', 'Keywords', 'Category']];
 
-      completedFiles.forEach((f) => {
+      completedFilesList.forEach((f) => {
         const m = f.metadata!;
         const originalExt = f.file.name.split('.').pop() || 'jpg';
         let finalBase = renameOnExport 
@@ -253,7 +230,6 @@ function App() {
         if (f.vectorFile) {
             const vectorExt = f.vectorFile.name.split('.').pop() || 'eps';
             zip.file(`${finalBase}.${vectorExt}`, f.vectorFile);
-            csvRows.push([escape(`${finalBase}.${vectorExt}`), escape(m.title), escape(m.description), escape(m.keywords.join(', ')), escape(m.category)]);
         }
       });
 
@@ -278,7 +254,6 @@ function App() {
     setFiles(prev => prev.map(file => {
       if (!selectedIds.has(file.id) || !file.metadata) return file;
       const m = { ...file.metadata };
-      
       if (field === 'keywords') {
           const val = value as string[];
           if (action === 'ADD') m.keywords = [...new Set([...m.keywords, ...val])];
@@ -306,20 +281,21 @@ function App() {
     }));
   };
 
-  const completedFiles = files.filter(f => f.status === ProcessingStatus.COMPLETED).length;
-  const progressPercent = files.length > 0 ? ((completedFiles + files.filter(f => f.status === ProcessingStatus.ERROR).length) / files.length) * 100 : 0;
+  const completedFilesCount = files.filter(f => f.status === ProcessingStatus.COMPLETED).length;
+  const progressPercent = files.length > 0 ? ((completedFilesCount + files.filter(f => f.status === ProcessingStatus.ERROR).length) / files.length) * 100 : 0;
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-500 ${isDarkMode ? 'bg-[#050505]' : 'bg-[#f8fafc]'}`}>
       <div className="fixed inset-0 z-0 pointer-events-none">
-         <div className={`absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b ${isDarkMode ? 'from-orange-900/10 to-transparent' : 'from-indigo-100/50 to-transparent'}`} />
+         <div className={`absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b ${isDarkMode ? 'bg-indigo-900/10' : 'bg-indigo-100/50'}`} />
       </div>
 
       <ApiKeyModal 
         isOpen={isApiKeyModalOpen} 
         onClose={() => setIsApiKeyModalOpen(false)} 
-        onSave={handleSaveApiKey} 
-        currentGeminiKey={geminiKey}
+        onSave={(p, k) => handleSaveApiKey(p as any, k)} 
+        currentGeminiKey=""
+        currentGroqKey={groqKey}
         currentMistralKey={mistralKey}
       />
       <BulkKeywordModal isOpen={isBulkModalOpen} onClose={() => setIsBulkModalOpen(false)} onApply={handleBulkApply} selectedCount={selectedIds.size} />
@@ -327,7 +303,7 @@ function App() {
       <header className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-all duration-300 ${isDarkMode ? 'bg-[#050505]/80 border-white/5' : 'bg-white/70 border-white/40 shadow-sm'}`}>
         <div className="max-w-[1920px] mx-auto px-6 md:px-10 flex items-center justify-between py-4">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView('generator')}>
-            <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-gradient-to-tr from-orange-600 to-amber-600' : 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white'}`}>
+            <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-gradient-to-tr from-indigo-600 to-violet-600' : 'bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20'}`}>
               <Layers className="w-5 h-5 text-white" />
             </div>
             <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>StockMeta<span className="font-light opacity-70">AI</span></h1>
@@ -347,14 +323,9 @@ function App() {
                  ))}
              </nav>
              <div className="h-6 w-px bg-slate-200 dark:bg-white/10 mx-2" />
-
-             <button 
-                onClick={() => setIsApiKeyModalOpen(true)} 
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${!geminiKey ? 'bg-red-500 text-white animate-pulse' : (isDarkMode ? 'hover:bg-white/10 text-emerald-400' : 'hover:bg-white/60 text-emerald-600')}`}
-             >
-                {geminiKey ? <><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="hidden lg:inline">Connected</span></> : <><Key size={14} /><span>Connect API</span></>}
+             <button onClick={() => setIsApiKeyModalOpen(true)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isDarkMode ? 'hover:bg-white/10 text-emerald-400' : 'hover:bg-white/60 text-emerald-600'}`}>
+                <Key size={14} /><span>Providers</span>
              </button>
-
              <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-3 rounded-xl transition-all ${isDarkMode ? 'text-gray-400 hover:text-amber-400' : 'text-slate-400 hover:text-amber-500'}`}>
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
              </button>
@@ -366,60 +337,41 @@ function App() {
         {view === 'about' ? (
            <About onBack={() => setView('generator')} />
         ) : view === 'prompts' ? (
-           <PromptGenerator geminiKey={geminiKey} mistralKey={mistralKey} onBack={() => setView('generator')} />
+           <PromptGenerator onBack={() => setView('generator')} />
         ) : view === 'calendar' ? (
            <EventCalendar onBack={() => setView('generator')} />
         ) : (
           <div className="flex flex-col gap-10 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-gray-200 dark:border-white/5">
                 <div>
-                  <h2 className={`text-5xl font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Metadata Workspace</h2>
-                  <p className={`text-lg ${isDarkMode ? 'text-gray-400' : 'text-slate-500'}`}>
-                    AI Power: <strong className="text-indigo-500">
-                      {modelMode === ModelMode.MISTRAL_PIXTRAL ? 'Mistral' : 'Gemini'}
-                    </strong>.
-                  </p>
+                  <h2 className={`text-5xl font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Workspace</h2>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                 <div className="lg:col-span-3 order-2 lg:order-1 space-y-6 lg:sticky lg:top-24 h-fit">
-                    <SettingsPanel 
-                      settings={generationSettings} 
-                      onSettingsChange={setGenerationSettings} 
-                      modelMode={modelMode}
-                      onModelModeChange={setModelMode}
-                    />
+                 <div className="lg:col-span-3 order-2 lg:order-1">
+                    <SettingsPanel settings={generationSettings} onSettingsChange={setGenerationSettings} modelMode={modelMode} onModelModeChange={setModelMode} />
                  </div>
                  <div className="lg:col-span-9 order-1 lg:order-2 space-y-8">
-                    <FileUploader onFilesSelected={handleFilesSelected} disabled={isBatchProcessing || !!(files.find(f => f.status === ProcessingStatus.ANALYZING))} />
-                    
+                    <FileUploader onFilesSelected={handleFilesSelected} disabled={isBatchProcessing} />
                     {files.length > 0 && (
-                      <div className={`rounded-xl border shadow-xl shadow-slate-200/50 dark:shadow-black/20 transition-all overflow-hidden ${isDarkMode ? 'bg-[#111827] border-white/10' : 'bg-white/90 border-white/60 backdrop-blur-md'}`}>
-                        {isBatchProcessing && <div className="absolute top-0 left-0 right-0 h-[3px] bg-gray-100 dark:bg-gray-800"><div className="h-full bg-indigo-500 transition-all duration-300 ease-out" style={{ width: `${Math.max(5, progressPercent)}%` }}/></div>}
-                        <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-4 p-4 relative z-10">
-                           <div className="flex items-center gap-4 w-full md:w-auto">
-                              <button onClick={handleSelectAll} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider transition-all border ${selectedIds.size > 0 ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/30' : 'border-transparent text-slate-500'}`}>
-                                 <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedIds.size > 0 && selectedIds.size === filteredFiles.length ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 dark:border-gray-600'}`}>{selectedIds.size > 0 && <CheckSquare size={12} />}</div>
+                      <div className={`rounded-xl border shadow-xl transition-all overflow-hidden ${isDarkMode ? 'bg-[#111827] border-white/10' : 'bg-white/90 border-white/60 backdrop-blur-md'}`}>
+                        {isBatchProcessing && <div className="absolute top-0 left-0 right-0 h-[3px] bg-gray-100 dark:bg-gray-800"><div className="h-full bg-indigo-500 transition-all duration-300 ease-out" style={{ width: `${progressPercent}%` }}/></div>}
+                        <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-4 p-4">
+                           <div className="flex items-center gap-4">
+                              <button onClick={handleSelectAll} className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider transition-all border border-transparent text-slate-500">
+                                 <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedIds.size > 0 ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 dark:border-gray-600'}`}>{selectedIds.size > 0 && <CheckSquare size={12} />}</div>
                                  {selectedIds.size > 0 ? `${selectedIds.size} Selected` : 'Select All'}
                               </button>
-                              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-transparent border-none text-base font-bold text-slate-600 dark:text-gray-300 focus:ring-0 cursor-pointer outline-none">
-                                 <option value="ALL">All ({files.length})</option>
-                                 <option value="COMPLETED">Done ({completedFiles})</option>
-                                 <option value="IDLE">Pending ({files.length - completedFiles - files.filter(f => f.status === ProcessingStatus.ERROR).length})</option>
-                              </select>
                            </div>
-
-                           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                           <div className="flex items-center gap-3">
                               {selectedIds.size > 0 && <button onClick={() => setIsBulkModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 text-slate-700 dark:text-gray-200 text-sm font-bold"><Edit3 size={16} /> Bulk Edit</button>}
-                              {files.some(f => f.status === ProcessingStatus.IDLE || f.status === ProcessingStatus.ERROR) && (
-                                !isBatchProcessing ? (
-                                    <button onClick={handleGenerateAll} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-md shadow-indigo-500/20 hover:scale-[1.02]"><Sparkles size={16} /> Generate All</button>
-                                ) : (
-                                    <button onClick={handleStopBatch} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-md shadow-red-500/20"><XCircle size={16} /> Stop</button>
-                                )
+                              {!isBatchProcessing ? (
+                                  <button onClick={handleGenerateAll} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-md shadow-indigo-500/20"><Sparkles size={16} /> Generate All</button>
+                              ) : (
+                                  <button onClick={handleStopBatch} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-md shadow-red-500/20"><XCircle size={16} /> Stop</button>
                               )}
-                              <button onClick={handleExportZip} disabled={completedFiles === 0 || isExporting} className="flex items-center gap-2 px-6 py-2.5 rounded-lg border text-sm font-bold transition-all border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                              <button onClick={handleExportZip} disabled={completedFilesCount === 0 || isExporting} className="flex items-center gap-2 px-6 py-2.5 rounded-lg border text-sm font-bold transition-all border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 disabled:opacity-50">
                                  {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} Export
                               </button>
                               <button onClick={handleClearAll} className="p-3 text-slate-400 hover:text-red-500 rounded-lg"><Trash2 size={18} /></button>
@@ -427,7 +379,6 @@ function App() {
                         </div>
                       </div>
                     )}
-
                     <div className="flex flex-col gap-6 pb-24">
                       {filteredFiles.map(file => (
                         <MetadataCard 
@@ -439,7 +390,7 @@ function App() {
                           onRegenerate={handleRegenerate}
                           onUpdateMetadata={handleUpdateMetadata}
                           onAddTrending={handleAddTrending}
-                          apiKey={geminiKey}
+                          apiKey={modelMode === ModelMode.GROQ_VISION ? groqKey : modelMode === ModelMode.MISTRAL_PIXTRAL ? mistralKey : ""}
                         />
                       ))}
                     </div>

@@ -1,168 +1,110 @@
-import { GoogleGenAI, Schema, Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { StockMetadata, ModelMode, GenerationSettings } from "../types";
 
-// --- GEMINI CONFIG ---
+// --- CONFIG ---
 const GEMINI_MODEL_FAST = "gemini-3-flash-preview"; 
 const GEMINI_MODEL_QUALITY = "gemini-3-flash-preview";
-const GEMINI_MODEL_ROBOTICS = "gemini-3-flash-preview"; 
+const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const MISTRAL_MODEL = "pixtral-12b-2409";
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-function parseKeys(apiKeyString: string | undefined): string[] {
-    if (!apiKeyString) return [];
-    return apiKeyString
-        .split(/[\n,]+/)
-        .map(k => k.trim())
-        .filter(k => k.length > 0);
-}
-
-// --- HELPER: CONSTRUCT PROMPT ---
-function buildSystemPrompt(settings?: GenerationSettings, mimeType?: string): string {
+// --- HELPER: SYSTEM PROMPTS ---
+const METADATA_SYSTEM_INSTRUCTION = (settings?: GenerationSettings) => {
   const kwMin = settings?.keywordCountMin || 15;
   const kwMax = settings?.keywordCountMax || 35;
+  const descMin = settings?.descriptionWordCountMin || 15;
+  const descMax = settings?.descriptionWordCountMax || 45;
 
-  let detectionRules = "";
-  
-  if (settings?.transparentBackground) {
-      detectionRules += `- CHECK ALPHA CHANNEL: If the image has an alpha channel (transparent background), the Title MUST end with "Isolated on Transparent Background". Keywords MUST include "transparent", "background", "isolated".\n`;
-  }
+  let rules = `You are an elite Stock Photography Metadata Expert. 
+    Strictly output JSON: { "title": "...", "description": "...", "keywords": [], "category": "..." }.
+    Title: Factual, < 70 chars. 
+    Keywords: ${kwMin}-${kwMax} relevant terms, main subject first.
+    Description: ${descMin}-${descMax} words.`;
 
-  if (settings?.whiteBackground) {
-      detectionRules += `- VISUAL CHECK: If background is white, Title MUST end with "Isolated on White Background". Keywords must include "isolated", "white background".\n`;
-  }
+  if (settings?.transparentBackground) rules += `\n- Detect transparency: If found, title MUST end with "Isolated on Transparent Background".`;
+  if (settings?.whiteBackground) rules += `\n- Detect white background: If found, title MUST end with "Isolated on White Background".`;
+  if (settings?.singleWordKeywords) rules += `\n- Keywords MUST be single words only.`;
+  if (settings?.prohibitedWordsEnabled) rules += `\n- DO NOT use: ${settings.prohibitedWordsText}`;
+  if (settings?.customPromptEnabled) rules += `\n- User custom rule: ${settings.customPromptText}`;
 
-  if (settings?.silhouette) {
-      detectionRules += `- VISUAL CHECK: If subject is a silhouette, Title MUST include "Silhouette". Keywords must include "silhouette", "shadow", "backlit".\n`;
-  }
+  return rules;
+};
 
-  if (settings?.singleWordKeywords) {
-      detectionRules += `- KEYWORDS FORMAT: STRICTLY SINGLE WORDS ONLY. No phrases.\n`;
-  }
+const PROMPT_ENGINEER_INSTRUCTION = (style: string) => `
+    You are a Professional AI Prompt Engineer. 
+    Your task is to analyze an image or concept and write a detailed, high-quality text prompt for AI generators like Midjourney or Stable Diffusion.
+    Target Style: ${style}. 
+    Focus on lighting, composition, mood, and technical camera details. 
+    Output ONLY the raw prompt text. No conversational filler.
+`;
 
-  if (settings?.prohibitedWordsEnabled && settings?.prohibitedWordsText) {
-      detectionRules += `- FORBIDDEN WORDS: Do NOT use: ${settings.prohibitedWordsText}\n`;
-  }
-  if (settings?.customPromptEnabled && settings?.customPromptText) {
-      detectionRules += `- USER INSTRUCTION: ${settings.customPromptText}\n`;
-  }
-
-  return `
-    You are an elite Stock Photography Metadata Expert specialized in Adobe Stock and Shutterstock.
-    YOUR GOAL: Maximize SEO discoverability while adhering strictly to agency standards.
-    
-    STRICT JSON OUTPUT FORMAT REQUIRED:
-    {
-      "title": "string",
-      "description": "string", 
-      "keywords": ["string", "string"],
-      "category": "string"
-    }
-
-    === 1. TITLE GUIDELINES (Agency Best Practices) ===
-    - Length: Short and descriptive. STRICTLY UNDER 70 CHARACTERS.
-    - Style: Factual, neutral, and descriptive. Avoid "Photo of", "Image of", or excessive adjectives.
-    - Content: Focus on the main subject, action, and setting.
-    
-    === 2. KEYWORD GUIDELINES ===
-    - Quantity: Between ${kwMin} and ${kwMax} highly relevant keywords.
-    - **CRITICAL: ORDER BY IMPORTANCE**. Main subject first, no spam.
-    - No keyword spamming. All keywords must be in English.
-    - DO NOT include brands, trademarks, or names of celebrities.
-    
-    === 3. DESCRIPTION ===
-    - Format: 1-2 paragraphs, SEO-friendly.
-    - Style: Natural, descriptive sentences that expand on the visual details and story of the image.
-
-    === DETECTION RULES ===
-    ${detectionRules}
-  `;
-}
-
-// --- MISTRAL IMPLEMENTATION ---
-async function callMistralChat(
+// --- EXTERNAL PROVIDERS (VISION) ---
+async function callExternalVisionRaw(
+    url: string,
     key: string,
+    model: string,
     systemPrompt: string,
-    userContent: any[],
-    model: string = "pixtral-12b-2409",
-    responseFormat: any = { type: "json_object" }
-): Promise<any> {
-    const url = "https://api.mistral.ai/v1/chat/completions";
-
-    const payload = {
-        model: model,
-        messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent }
-        ],
-        temperature: 0.3,
-        response_format: responseFormat
-    };
-
+    mimeType: string,
+    base64Data: string,
+    userText: string = "Analyze this image."
+): Promise<string> {
     const response = await fetch(url, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${key}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+            model,
+            messages: [
+                { role: "system", content: systemPrompt },
+                { 
+                    role: "user", 
+                    content: [
+                        { type: "text", text: userText },
+                        { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }
+                    ] 
+                }
+            ],
+            temperature: 0.2
+        })
     });
 
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Mistral API Error: ${err}`);
-    }
-
-    const data = await response.json();
-    return { text: data.choices[0].message.content };
+    if (!response.ok) throw new Error(`${model} API Error: ${response.statusText}`);
+    const result = await response.json();
+    return result.choices[0].message.content;
 }
 
-// --- GEMINI IMPLEMENTATION ---
-async function callGemini(
-    keys: string[],
-    modelId: string,
-    prompt: string,
-    mimeType: string,
-    base64Data: string,
-    responseSchema?: any,
-    retries = 3
-): Promise<any> {
-    const keyIndex = Math.floor(Math.random() * keys.length);
-    const activeKey = keys[keyIndex];
-    if (!activeKey) throw new Error("No valid Gemini API Key found.");
+// --- EXTERNAL PROVIDERS (TEXT) ---
+async function callExternalText(
+    url: string,
+    key: string,
+    model: string,
+    systemPrompt: string,
+    userPrompt: string,
+    isJson: boolean = false
+): Promise<string> {
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${key}`
+        },
+        body: JSON.stringify({
+            model,
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt }
+            ],
+            temperature: 0.7,
+            ...(isJson ? { response_format: { type: "json_object" } } : {})
+        })
+    });
 
-    const ai = new GoogleGenAI({ apiKey: activeKey });
-
-    try {
-        const config: any = { temperature: 0.3 };
-        if (responseSchema) {
-            config.responseMimeType = "application/json";
-            config.responseSchema = responseSchema;
-        }
-
-        const response = await ai.models.generateContent({
-            model: modelId,
-            contents: {
-                parts: [
-                    { inlineData: { mimeType, data: base64Data } },
-                    { text: prompt }
-                ]
-            },
-            config: config
-        });
-
-        return response;
-    } catch (e: any) {
-        const msg = e.message || String(e);
-        if ((msg.includes('429') || msg.includes('quota')) && retries > 0) {
-             if (keys.length > 1) {
-                 const remaining = keys.filter(k => k !== activeKey);
-                 return callGemini(remaining, modelId, prompt, mimeType, base64Data, responseSchema, retries);
-             }
-             await wait(3000);
-             return callGemini(keys, modelId, prompt, mimeType, base64Data, responseSchema, retries - 1);
-        }
-        throw e;
-    }
+    if (!response.ok) throw new Error(`${model} API Error: ${response.statusText}`);
+    const result = await response.json();
+    return result.choices[0].message.content;
 }
 
 // --- MAIN EXPORT: GENERATE METADATA ---
@@ -173,99 +115,76 @@ export const generateImageMetadata = async (
   apiKey: string,
   settings: GenerationSettings
 ): Promise<StockMetadata> => {
-  const keys = parseKeys(apiKey);
-  if (keys.length === 0) throw new Error(`API Key is missing.`);
+  const systemInstruction = METADATA_SYSTEM_INSTRUCTION(settings);
 
-  const systemPrompt = buildSystemPrompt(settings, mimeType);
-  
-  // Mistral Logic
-  if (mode === ModelMode.MISTRAL_PIXTRAL) {
-      const response = await callMistralChat(keys[0], systemPrompt, [
-          { type: "text", text: "Analyze this image and generate metadata." },
-          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }
-      ]);
-      return JSON.parse(response.text) as StockMetadata;
+  if (mode === ModelMode.GROQ_VISION) {
+    const raw = await callExternalVisionRaw("https://api.groq.com/openai/v1/chat/completions", apiKey, GROQ_MODEL, systemInstruction, mimeType, base64Data);
+    return JSON.parse(raw) as StockMetadata;
   }
 
-  // Gemini Logic
-  let modelId = GEMINI_MODEL_FAST;
-  if (mode === ModelMode.QUALITY) modelId = GEMINI_MODEL_QUALITY;
-  else if (mode === ModelMode.ROBOTICS) modelId = GEMINI_MODEL_ROBOTICS;
-  
-  const metadataSchema: Schema = {
-    type: Type.OBJECT,
-    properties: {
-        title: { type: Type.STRING },
-        description: { type: Type.STRING },
-        keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-        category: { type: Type.STRING },
-    },
-    required: ["title", "description", "keywords", "category"],
-  };
+  if (mode === ModelMode.MISTRAL_PIXTRAL) {
+    const raw = await callExternalVisionRaw("https://api.mistral.ai/v1/chat/completions", apiKey, MISTRAL_MODEL, systemInstruction, mimeType, base64Data);
+    return JSON.parse(raw) as StockMetadata;
+  }
 
-  const response = await callGemini(keys, modelId, systemPrompt, mimeType, base64Data, metadataSchema);
+  // GEMINI PATH
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const modelId = mode === ModelMode.QUALITY ? GEMINI_MODEL_QUALITY : GEMINI_MODEL_FAST;
+
+  const response = await ai.models.generateContent({
+    model: modelId,
+    contents: {
+        parts: [{ inlineData: { mimeType, data: base64Data } }, { text: "Provide metadata." }]
+    },
+    config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                description: { type: Type.STRING },
+                keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+                category: { type: Type.STRING },
+            },
+            required: ["title", "description", "keywords", "category"],
+        }
+    }
+  });
+
   if (!response.text) throw new Error("Gemini returned empty response");
   return JSON.parse(response.text) as StockMetadata;
 };
 
-// --- TRENDING KEYWORDS ---
-export const getTrendingKeywords = async (baseKeywords: string[], apiKey: string): Promise<string[]> => {
-    const keys = parseKeys(apiKey);
-    if (keys.length === 0) throw new Error("API Key missing");
-    
-    const prompt = `SEO Expert Task: Analyze these keywords: ${baseKeywords.slice(0, 5).join(", ")}. Identify 5-10 "Trending" or "High Volume" related search terms for stock photography.`;
-    const ai = new GoogleGenAI({ apiKey: keys[0] });
-    const response = await ai.models.generateContent({
-            model: GEMINI_MODEL_QUALITY,
-            contents: prompt,
-            config: { tools: [{ googleSearch: {} }] }
-    });
-    const text = response.text || "";
-    return text.split('\n').map(l => l.replace(/^[-\d.]+\s*/, '').trim()).filter(l => l.length > 2).slice(0, 10);
-};
-
-// --- GENERATE IMAGE PROMPT (Reverse Engineering) ---
+// --- GENERATE IMAGE PROMPT ---
 export const generateImagePrompt = async (
   base64Data: string,
   mimeType: string,
-  apiKey: string,
   imageType: string,
-  useMistral: boolean = false
+  provider: 'GEMINI' | 'GROQ' | 'MISTRAL' = 'GEMINI',
+  apiKey?: string
 ): Promise<string> => {
-  const keys = parseKeys(apiKey);
-  if (keys.length === 0) throw new Error("API Key missing");
+  const systemInstruction = PROMPT_ENGINEER_INSTRUCTION(imageType);
 
-  const prompt = `
-    Analyze this image and write a detailed, high-quality text prompt that could be used to recreate this exact image using an AI generator like Midjourney or Stable Diffusion.
-    Context:
-    - Image Style: ${imageType}
-    - Include details about subject, lighting, composition, camera angle, color palette, and mood.
-    - If it's a vector/illustration, describe the art style.
-    Output ONLY the prompt text. Do not add conversational filler.
-  `;
-
-  if (useMistral) {
-      const response = await callMistralChat(
-          keys[0], 
-          "You are a Professional AI Prompt Engineer.", 
-          [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }
-          ],
-          "pixtral-12b-2409",
-          { type: "text" }
-      );
-      return response.text || "";
+  if (provider === 'GROQ' && apiKey) {
+    return await callExternalVisionRaw("https://api.groq.com/openai/v1/chat/completions", apiKey, GROQ_MODEL, systemInstruction, mimeType, base64Data, "Write the AI generation prompt.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: keys[0] });
+  if (provider === 'MISTRAL' && apiKey) {
+    return await callExternalVisionRaw("https://api.mistral.ai/v1/chat/completions", apiKey, MISTRAL_MODEL, systemInstruction, mimeType, base64Data, "Write the AI generation prompt.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL_QUALITY,
     contents: {
       parts: [
         { inlineData: { mimeType, data: base64Data } },
-        { text: prompt }
+        { text: "Write the AI generation prompt." }
       ]
+    },
+    config: {
+        systemInstruction
     }
   });
 
@@ -276,40 +195,29 @@ export const generateImagePrompt = async (
 export const expandTextToPrompts = async (
   text: string,
   count: number,
-  apiKey: string,
   style: string,
-  useMistral: boolean = false
+  provider: 'GEMINI' | 'GROQ' | 'MISTRAL' = 'GEMINI',
+  apiKey?: string
 ): Promise<string[]> => {
-  const keys = parseKeys(apiKey);
-  if (keys.length === 0) throw new Error("API Key missing");
+  const systemInstruction = `You are an AI Prompt Expansion expert. Style: ${style}. Output ONLY a JSON array of ${count} highly detailed prompts. Key: "prompts"`;
+  const userPrompt = `Expand this concept into ${count} unique variations: "${text}"`;
 
-  const prompt = `
-    Act as a Professional AI Prompt Engineer.
-    INPUT CONCEPT: "${text}"
-    TARGET STYLE: "${style}"
-    TASK: Generate ${count} distinct, highly detailed AI image generation prompts based on the Input Concept.
-    Each prompt should explore a slightly different angle or composition while maintaining the Target Style.
-    Include artistic terms, lighting descriptions, and rendering engines.
-    FORMAT: Return a JSON array of strings. 
-    Example: ["Prompt 1...", "Prompt 2..."]
-  `;
-
-  if (useMistral) {
-      const response = await callMistralChat(
-          keys[0], 
-          "You are a Professional AI Prompt Engineer.", 
-          [{ type: "text", text: prompt }],
-          "mistral-large-latest",
-          { type: "json_object" }
-      );
-      return JSON.parse(response.text);
+  if (provider === 'GROQ' && apiKey) {
+    const raw = await callExternalText("https://api.groq.com/openai/v1/chat/completions", apiKey, GROQ_MODEL, systemInstruction, userPrompt, true);
+    return JSON.parse(raw).prompts || [];
   }
 
-  const ai = new GoogleGenAI({ apiKey: keys[0] });
+  if (provider === 'MISTRAL' && apiKey) {
+    const raw = await callExternalText("https://api.mistral.ai/v1/chat/completions", apiKey, "mistral-large-latest", systemInstruction, userPrompt, true);
+    return JSON.parse(raw).prompts || [];
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL_FAST,
-    contents: prompt,
+    contents: userPrompt,
     config: {
+        systemInstruction: `You are an AI Prompt Expansion expert. Style: ${style}. Output ONLY a JSON array of ${count} highly detailed prompts.`,
         responseMimeType: "application/json",
         responseSchema: {
             type: Type.ARRAY,
@@ -321,60 +229,65 @@ export const expandTextToPrompts = async (
   return response.text ? JSON.parse(response.text) : [];
 };
 
-// --- GENERATE IMAGE FROM TEXT ---
-export const generateImageFromText = async (
-    prompt: string,
-    aspectRatio: string, 
-    modelId: string, 
-    apiKey: string,
-    sourceImage?: { base64: string, mimeType: string, previewUrl?: string },
-    advancedSettings?: { negativePrompt?: string, seed?: number, guidanceScale?: number }
-): Promise<string> => {
-    const keys = parseKeys(apiKey);
-    if (keys.length === 0) throw new Error("API Key missing");
-
-    const ai = new GoogleGenAI({ apiKey: keys[0] });
-    const parts: any[] = [];
-    
-    if (sourceImage) {
-        parts.push({ inlineData: { mimeType: sourceImage.mimeType, data: sourceImage.base64 } });
-    }
-
-    let finalPrompt = prompt;
-    if (advancedSettings?.negativePrompt) {
-        finalPrompt += ` (Exclude: ${advancedSettings.negativePrompt})`;
-    }
-    
-    parts.push({ text: finalPrompt });
-
-    const config: any = {
-        imageConfig: { aspectRatio: aspectRatio || "1:1" }
-    };
-    
-    if (advancedSettings?.seed !== undefined && advancedSettings.seed !== null) {
-        config.seed = Number(advancedSettings.seed);
-    }
-
+export const getTrendingKeywords = async (baseKeywords: string[]): Promise<string[]> => {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const prompt = `Analyze: ${baseKeywords.slice(0, 5).join(", ")}. Identify 5-10 high-volume search terms.`;
     const response = await ai.models.generateContent({
-        model: modelId,
-        contents: { parts },
-        config: config
-    });
-
-    if (response.candidates && response.candidates.length > 0) {
-        const content = response.candidates[0].content;
-        if (content && content.parts) {
-            for (const part of content.parts) {
-                if (part.inlineData) {
-                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                }
+            model: GEMINI_MODEL_QUALITY,
+            contents: prompt,
+            config: { 
+                systemInstruction: "You are an SEO expert. Return keywords as a simple newline-separated list.",
+                tools: [{ googleSearch: {} }] 
             }
-        }
+    });
+    return (response.text || "").split('\n').map(l => l.trim()).filter(l => l.length > 2);
+};
+
+// --- GENERATE IMAGE ---
+export const generateImageFromText = async (
+  prompt: string,
+  aspectRatio: string,
+  model: string,
+  _apiKey: string,
+  sourceImage?: {
+    base64: string;
+    mimeType: string;
+  },
+  advancedSettings?: {
+    seed?: number;
+  }
+): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const parts: any[] = [];
+  if (sourceImage) {
+    parts.push({
+      inlineData: {
+        data: sourceImage.base64,
+        mimeType: sourceImage.mimeType,
+      },
+    });
+  }
+  parts.push({ text: prompt });
+
+  const response = await ai.models.generateContent({
+    model: model || 'gemini-2.5-flash-image',
+    contents: { parts },
+    config: {
+      imageConfig: {
+        aspectRatio: aspectRatio as any,
+      },
+      seed: advancedSettings?.seed,
+    },
+  });
+
+  if (response.candidates && response.candidates[0] && response.candidates[0].content) {
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+      }
     }
-    
-    if (response.text) {
-        throw new Error(`Model returned text instead of image: ${response.text.substring(0, 100)}...`);
-    }
-    
-    throw new Error("No image generated.");
+  }
+  
+  throw new Error("No image was generated by the model. Try refining your prompt.");
 };

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sparkles, Copy, Check, Loader2, Image as ImageIcon, Trash2, ArrowLeft, Download, Type, RefreshCw, ChevronDown, XCircle, Zap, Eye } from 'lucide-react';
+import { Sparkles, Copy, Check, Loader2, Image as ImageIcon, Trash2, ArrowLeft, Download, Type, RefreshCw, ChevronDown, XCircle, Zap, Cpu, Eye } from 'lucide-react';
 import { FileUploader } from './FileUploader';
 import { optimizeImage } from '../services/imageOptimizer';
 import { generateImagePrompt, expandTextToPrompts } from '../services/geminiService';
@@ -23,13 +23,11 @@ interface TextExpansionItem {
 }
 
 interface PromptGeneratorProps {
-  geminiKey?: string;
-  mistralKey?: string;
   onBack?: () => void;
 }
 
 type Mode = 'REVERSE' | 'EXPAND';
-type Provider = 'GEMINI' | 'MISTRAL';
+type Provider = 'GEMINI' | 'GROQ' | 'MISTRAL';
 
 const IMAGE_TYPES = [
   "Photography", "Cinematic", "3D Render", "Digital Art", 
@@ -37,7 +35,7 @@ const IMAGE_TYPES = [
   "Minimalist Vector", "Icon Logo"
 ];
 
-export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mistralKey, onBack }) => {
+export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ onBack }) => {
   const [mode, setMode] = useState<Mode>('REVERSE');
   const [provider, setProvider] = useState<Provider>('GEMINI');
   
@@ -54,7 +52,12 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
   
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const activeKey = provider === 'GEMINI' ? geminiKey : mistralKey;
+  // Get keys from localStorage for non-Gemini providers
+  const getApiKey = (p: Provider) => {
+    if (p === 'GROQ') return localStorage.getItem('groq_api_key') || '';
+    if (p === 'MISTRAL') return localStorage.getItem('mistral_api_key') || '';
+    return '';
+  };
 
   // --- REVERSE IMAGE LOGIC ---
   const handleFilesSelected = (files: File[]) => {
@@ -86,19 +89,25 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
   };
 
   const handleGenerate = async (id: string) => {
-    if (!activeKey) {
-      alert(`Please add your ${provider} API Key in the settings first.`);
-      return;
+    const activeKey = getApiKey(provider);
+    if ((provider === 'GROQ' || provider === 'MISTRAL') && !activeKey) {
+        alert(`${provider} API key is missing. Please add it in the settings modal on the main workspace.`);
+        return;
     }
 
     setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'loading', error: undefined } : i));
-
     try {
       const item = items.find(i => i.id === id);
       if (!item) return;
 
       const { base64, mimeType } = await optimizeImage(item.file);
-      const prompt = await generateImagePrompt(base64, mimeType, activeKey, item.file.type.startsWith('image/') ? "Photography" : "Vector", provider === 'MISTRAL');
+      const prompt = await generateImagePrompt(
+        base64, 
+        mimeType, 
+        item.file.type.startsWith('image/') ? "Photography" : "Vector",
+        provider,
+        activeKey
+      );
 
       setItems(prev => prev.map(i => i.id === id ? { ...i, status: 'completed', prompt } : i));
     } catch (err: any) {
@@ -107,11 +116,6 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
   };
 
   const handleGenerateAll = async () => {
-    if (!activeKey) {
-      alert(`Please add your ${provider} API Key in the settings first.`);
-      return;
-    }
-    
     if (isGeneratingAll) return;
     const pendingItems = items.filter(i => i.status === 'idle' || i.status === 'error');
     if (pendingItems.length === 0) return;
@@ -121,10 +125,10 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
 
     for (const item of pendingItems) {
         if (stopGenerationRef.current) break;
-        if (!items.find(i => i.id === item.id)) continue;
         await handleGenerate(item.id);
+        
         if (!stopGenerationRef.current && pendingItems.indexOf(item) !== pendingItems.length - 1) {
-             await new Promise(resolve => setTimeout(resolve, provider === 'GEMINI' ? 6000 : 2000));
+             await new Promise(resolve => setTimeout(resolve, provider === 'GEMINI' ? 3000 : 1000));
         }
     }
     setIsGeneratingAll(false);
@@ -132,8 +136,9 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
 
   const handleExpandText = async () => {
       if (!inputText.trim()) return;
-      if (!activeKey) {
-          alert(`Please add your ${provider} API Key in the settings first.`);
+      const activeKey = getApiKey(provider);
+      if ((provider === 'GROQ' || provider === 'MISTRAL') && !activeKey) {
+          alert(`${provider} API key is missing. Please add it in the settings modal on the main workspace.`);
           return;
       }
 
@@ -149,24 +154,11 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
       setInputText('');
 
       try {
-          const prompts = await expandTextToPrompts(newItem.originalText, variationCount, activeKey, newItem.imageType, provider === 'MISTRAL');
+          const prompts = await expandTextToPrompts(newItem.originalText, variationCount, newItem.imageType, provider, activeKey);
           setExpansionItems(prev => prev.map(i => i.id === newItem.id ? { ...i, status: 'completed', generatedPrompts: prompts } : i));
       } catch (err: any) {
           setExpansionItems(prev => prev.map(i => i.id === newItem.id ? { ...i, status: 'error', error: err.message } : i));
       }
-  };
-
-  // --- COMMON UTILS ---
-  const downloadCSV = (content: string, prefix: string) => {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${prefix}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -188,7 +180,7 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
       )}
 
       <div className="text-center mb-10">
-        <h2 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-orange-500">
+        <h2 className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-indigo-500">
           AI Prompt Studio
         </h2>
         <p className="max-w-3xl mx-auto text-slate-600 dark:text-slate-400 text-xl">
@@ -197,8 +189,8 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
       </div>
 
       <div className="flex flex-col items-center gap-6 mb-10">
-          {/* Mode Toggle */}
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl">
+          {/* Main Mode Toggle */}
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl shadow-inner">
               <button
                   onClick={() => setMode('REVERSE')}
                   className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-base font-bold transition-all ${
@@ -217,20 +209,28 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
               </button>
           </div>
 
-          {/* Provider Selection */}
-          <div className="flex bg-slate-100 dark:bg-slate-950/50 p-1.5 rounded-xl border border-slate-200 dark:border-white/5">
+          {/* Provider Toggle (New) */}
+          <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg border border-slate-200 dark:border-slate-800">
               <button
                   onClick={() => setProvider('GEMINI')}
-                  className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold transition-all ${
-                      provider === 'GEMINI' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
+                      provider === 'GEMINI' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'
                   }`}
               >
                   <Zap size={14} /> Gemini
               </button>
               <button
+                  onClick={() => setProvider('GROQ')}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
+                      provider === 'GROQ' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'
+                  }`}
+              >
+                  <Cpu size={14} /> Groq
+              </button>
+              <button
                   onClick={() => setProvider('MISTRAL')}
-                  className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold transition-all ${
-                      provider === 'MISTRAL' ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-slate-500'
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-bold transition-all ${
+                      provider === 'MISTRAL' ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'
                   }`}
               >
                   <Eye size={14} /> Mistral
@@ -241,12 +241,12 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
       {mode === 'REVERSE' ? (
         <div>
            <div className="mb-12">
-                <FileUploader onFilesSelected={handleFilesSelected} />
+                <FileUploader onFilesSelected={handleFilesSelected} disabled={isGeneratingAll} />
            </div>
 
             {items.length > 0 && (
-                <div className="flex flex-wrap md:flex-nowrap justify-between items-center gap-4 mb-8 sticky top-24 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                {items.some(i => i.status === 'loading') && (
+                <div className="flex flex-wrap md:flex-nowrap justify-between items-center gap-4 mb-8 sticky top-24 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                {isGeneratingAll && (
                     <div className="absolute bottom-0 left-0 w-full h-1 bg-slate-200 dark:bg-slate-700">
                         <div className="h-full bg-pink-500 transition-all duration-300 ease-out" style={{ width: `${progressPercentage}%` }} />
                     </div>
@@ -254,7 +254,7 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
                 <div className="flex items-center gap-3">
                     {items.filter(i => i.status === 'idle' || i.status === 'error').length > 0 && (
                       !isGeneratingAll ? (
-                        <button onClick={handleGenerateAll} className="flex items-center gap-2 px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition-colors shadow-sm shadow-pink-500/20">
+                        <button onClick={handleGenerateAll} className="flex items-center gap-2 px-5 py-2.5 bg-pink-600 hover:bg-pink-500 text-white rounded-lg text-sm font-bold transition-colors shadow-lg shadow-pink-500/20">
                             <Sparkles size={18} /> Generate All ({items.filter(i => i.status === 'idle' || i.status === 'error').length})
                         </button>
                       ) : (
@@ -265,13 +265,7 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
                     )}
                 </div>
                 <div className="flex items-center gap-3 ml-auto">
-                    <button onClick={() => {
-                        const csv = [['No.', 'Prompt'], ...items.filter(i => i.status === 'completed').map((i, idx) => [idx + 1, `"${i.prompt.replace(/"/g, '""')}"`])].map(r => r.join(',')).join('\n');
-                        downloadCSV(csv, 'reverse_prompts');
-                    }} disabled={!items.some(i => i.status === 'completed')} className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors shadow-sm">
-                        <Download size={18} /> Export
-                    </button>
-                    <button onClick={handleClearAll} disabled={isGeneratingAll} className="flex items-center gap-2 px-5 py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 text-red-600 dark:text-red-400 rounded-lg text-sm font-bold transition-colors border border-red-200 dark:border-red-800/50">
+                    <button onClick={handleClearAll} disabled={isGeneratingAll} className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-red-50 text-slate-600 dark:text-slate-300 hover:text-red-500 rounded-lg text-sm font-bold transition-colors border border-transparent hover:border-red-200 dark:hover:border-red-800/50">
                         <Trash2 size={18} /> Clear
                     </button>
                 </div>
@@ -280,7 +274,7 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
 
             <div className="space-y-8">
                 {items.map(item => (
-                <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col md:flex-row">
+                <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col md:flex-row animate-in fade-in slide-in-from-bottom-2">
                     <div className="md:w-1/4 h-80 md:h-auto bg-slate-100 dark:bg-slate-950 relative group">
                         <img src={item.previewUrl} alt="Preview" className="w-full h-full object-cover" />
                         <button onClick={() => handleRemove(item.id)} className="absolute top-3 right-3 p-2.5 bg-black/50 hover:bg-red-500 text-white rounded-lg transition-colors opacity-0 group-hover:opacity-100">
@@ -291,20 +285,27 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-2">
                             <ImageIcon size={22} className="text-pink-500" />
-                            <span className="font-bold text-lg text-slate-700 dark:text-slate-200">Generated Prompt ({provider})</span>
+                            <span className="font-bold text-lg text-slate-700 dark:text-slate-200">Generated Prompt</span>
                             </div>
                             {item.status === 'completed' && (
-                            <button onClick={() => handleCopy(item.prompt, item.id)} className="text-slate-400 hover:text-indigo-500">
+                            <button onClick={() => handleCopy(item.prompt, item.id)} className="text-slate-400 hover:text-indigo-500 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                                 {copiedId === item.id ? <Check size={20} className="text-emerald-500" /> : <Copy size={20} />}
                             </button>
                             )}
                         </div>
-                        <div className="flex-1 relative">
+                        <div className="flex-1 relative min-h-[140px]">
                             {item.status === 'loading' && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-indigo-500 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-10 rounded-lg">
                                 <Loader2 size={40} className="animate-spin mb-3" />
-                                <p className="text-base font-bold">Analyzing image with {provider}...</p>
+                                <p className="text-base font-bold">Analyzing image...</p>
+                                <p className="text-xs opacity-70 mt-1">Using {provider}</p>
                             </div>
+                            )}
+                            {item.status === 'error' && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-red-500 bg-red-50/50 dark:bg-red-900/10 backdrop-blur-sm z-10 rounded-lg p-6 text-center">
+                                    <XCircle size={32} className="mb-2" />
+                                    <p className="text-sm font-medium">{item.error || 'Failed to generate prompt'}</p>
+                                </div>
                             )}
                             <textarea readOnly value={item.prompt} className="w-full h-full min-h-[140px] p-5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl resize-none focus:outline-none text-slate-700 dark:text-slate-300 leading-relaxed text-base" placeholder="Prompt will appear here..." />
                         </div>
@@ -346,7 +347,7 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" size={20} />
                             </div>
                         </div>
-                        <button onClick={handleExpandText} disabled={!inputText.trim() || !activeKey} className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-500/20 py-3 mt-auto text-base">
+                        <button onClick={handleExpandText} disabled={!inputText.trim()} className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-500/20 py-3 mt-auto text-base">
                             <Sparkles size={20} /> Expand with {provider}
                         </button>
                     </div>
@@ -355,23 +356,29 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ geminiKey, mis
 
             <div className="space-y-8">
                 {expansionItems.map(item => (
-                    <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                    <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm animate-in zoom-in-95 duration-300">
                         <div className="bg-slate-50 dark:bg-slate-950 px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
                             <h3 className="text-base font-bold text-slate-900 dark:text-white truncate max-w-lg">"{item.originalText}"</h3>
                             <button onClick={() => setExpansionItems(prev => prev.filter(i => i.id !== item.id))} className="text-slate-400 hover:text-red-500"><Trash2 size={18} /></button>
                         </div>
                         <div className="p-8">
-                            {item.status === 'loading' && <div className="flex items-center justify-center py-10 text-indigo-500 gap-3"><Loader2 size={32} className="animate-spin" /><span className="font-bold text-lg">Expansion in progress...</span></div>}
+                            {item.status === 'loading' && <div className="flex items-center justify-center py-10 text-indigo-500 gap-3"><Loader2 size={32} className="animate-spin" /><span className="font-bold text-lg">Expanding...</span></div>}
                             {item.status === 'completed' && (
-                                <div className="space-y-4">
+                                <div className="grid grid-cols-1 gap-4">
                                     {item.generatedPrompts.map((prompt, idx) => (
-                                        <div key={idx} className="group relative bg-slate-50 dark:bg-slate-950 p-5 rounded-xl border border-slate-100 dark:border-slate-800">
+                                        <div key={idx} className="group relative bg-slate-50 dark:bg-slate-950 p-5 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-indigo-300 transition-colors">
                                             <p className="text-base text-slate-700 dark:text-slate-300 pr-10 leading-relaxed">{prompt}</p>
-                                            <button onClick={() => handleCopy(prompt, `${item.id}-${idx}`)} className="absolute top-4 right-4 text-slate-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-all">
+                                            <button onClick={() => handleCopy(prompt, `${item.id}-${idx}`)} className="absolute top-4 right-4 text-slate-400 hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-all p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                                                 {copiedId === `${item.id}-${idx}` ? <Check size={20} className="text-emerald-500" /> : <Copy size={20} />}
                                             </button>
                                         </div>
                                     ))}
+                                </div>
+                            )}
+                            {item.status === 'error' && (
+                                <div className="flex flex-col items-center justify-center py-10 text-red-500">
+                                    <XCircle size={32} className="mb-2" />
+                                    <p className="text-sm font-medium">{item.error || 'Expansion failed'}</p>
                                 </div>
                             )}
                         </div>
