@@ -41,6 +41,7 @@ export const generateImageMetadata = async (
   if (settings?.prohibitedWordsEnabled) systemInstruction += `\n- DO NOT use: ${settings.prohibitedWordsText}`;
   if (settings?.customPromptEnabled) systemInstruction += `\n- User custom rule: ${settings.customPromptText}`;
 
+  // Handle Groq Llama Vision
   if (mode === ModelMode.GROQ_VISION) {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -52,9 +53,33 @@ export const generateImageMetadata = async (
       })
     });
     const result = await response.json();
+    if (result.error) throw new Error(result.error.message);
     return JSON.parse(result.choices[0].message.content);
   }
 
+  // Handle Mistral Pixtral Vision
+  if (mode === ModelMode.MISTRAL_PIXTRAL) {
+    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: MISTRAL_MODEL,
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: [
+            { type: "text", text: "Analyze this image and provide metadata." },
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }
+          ]}
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
+    const result = await response.json();
+    if (result.error) throw new Error(result.error.message);
+    return JSON.parse(result.choices[0].message.content);
+  }
+
+  // Fallback to Gemini (Flash or Pro)
   const ai = getAI();
   const modelId = mode === ModelMode.QUALITY ? GEMINI_MODEL_QUALITY : GEMINI_MODEL_FAST;
 
@@ -158,7 +183,7 @@ export const expandTextToPrompts = async (
     const url = provider === 'GROQ' 
       ? "https://api.groq.com/openai/v1/chat/completions" 
       : "https://api.mistral.ai/v1/chat/completions";
-    const model = provider === 'GROQ' ? "llama-3.3-70b-versatile" : "mistral-large-latest"; // Using larger text models for expansion
+    const model = provider === 'GROQ' ? "llama-3.3-70b-versatile" : "mistral-large-latest"; 
 
     const response = await fetch(url, {
       method: "POST",
@@ -177,7 +202,6 @@ export const expandTextToPrompts = async (
     
     const content = result.choices[0].message.content;
     const parsed = JSON.parse(content);
-    // Handle cases where the model might wrap the array in an object key like "prompts"
     return Array.isArray(parsed) ? parsed : (parsed.prompts || Object.values(parsed)[0]);
   }
 
