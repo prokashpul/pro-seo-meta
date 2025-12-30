@@ -14,6 +14,7 @@ import { Trash2, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key
 import JSZip from 'jszip';
 
 function App() {
+  const [geminiKey, setGeminiKey] = useState<string>('');
   const [groqKey, setGroqKey] = useState<string>('');
   const [mistralKey, setMistralKey] = useState<string>('');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
@@ -70,14 +71,16 @@ function App() {
 
   // LOAD SAVED KEYS
   useEffect(() => {
-    const grKey = localStorage.getItem('groq_api_key');
-    const mKey = localStorage.getItem('mistral_api_key');
-    if (grKey) setGroqKey(grKey);
-    if (mKey) setMistralKey(mKey);
+    setGeminiKey(localStorage.getItem('gemini_api_key') || '');
+    setGroqKey(localStorage.getItem('groq_api_key') || '');
+    setMistralKey(localStorage.getItem('mistral_api_key') || '');
   }, []);
 
   const handleSaveApiKey = (provider: 'GEMINI' | 'GROQ' | 'MISTRAL', key: string) => {
-      if (provider === 'GROQ') {
+      if (provider === 'GEMINI') {
+          setGeminiKey(key);
+          localStorage.setItem('gemini_api_key', key);
+      } else if (provider === 'GROQ') {
           setGroqKey(key);
           localStorage.setItem('groq_api_key', key);
       } else if (provider === 'MISTRAL') {
@@ -115,7 +118,6 @@ function App() {
       setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: ProcessingStatus.COMPLETED, metadata } : f));
     } catch (error) {
       const errorMsg = (error as Error).message;
-      if (errorMsg.includes("Key")) setIsApiKeyModalOpen(true);
       setFiles(prev => prev.map(f => f.id === fileObj.id ? { ...f, status: ProcessingStatus.ERROR, error: errorMsg } : f));
     }
   };
@@ -294,7 +296,7 @@ function App() {
         isOpen={isApiKeyModalOpen} 
         onClose={() => setIsApiKeyModalOpen(false)} 
         onSave={(p, k) => handleSaveApiKey(p as any, k)} 
-        currentGeminiKey=""
+        currentGeminiKey={geminiKey}
         currentGroqKey={groqKey}
         currentMistralKey={mistralKey}
       />

@@ -1,5 +1,7 @@
 {
-  "name": "StockMeta AI (Gemini 2.5)",
-  "description": "Metadata generator for stock photography powered by Google Gemini 2.5 Flash and Flash Lite.",
-  "requestFramePermissions": []
+  "name": "StockMeta AI - Pro Edition",
+  "description": "Enterprise-grade stock metadata generator powered by Gemini 3 Flash and Pro models, featuring vector support and SEO grounding.",
+  "requestFramePermissions": [
+    "camera"
+  ]
 }
