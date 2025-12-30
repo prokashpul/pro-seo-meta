@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { UploadedFile, ProcessingStatus, ModelMode, StockMetadata, GenerationSettings } from './types';
 import { generateImageMetadata } from './services/geminiService';
@@ -10,13 +11,18 @@ import { About } from './components/About';
 import { SettingsPanel } from './components/SettingsPanel';
 import { PromptGenerator } from './components/PromptGenerator';
 import { EventCalendar } from './components/EventCalendar';
-import { Trash2, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, Info, Home, Layers, XCircle, Wand2, Calendar } from 'lucide-react';
+import { 
+  Trash2, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, 
+  Info, Home, Layers, XCircle, Wand2, Calendar, CheckCircle, 
+  Twitter, Github, Globe, ExternalLink 
+} from 'lucide-react';
 import JSZip from 'jszip';
 
 function App() {
   const [geminiKey, setGeminiKey] = useState<string>('');
   const [groqKey, setGroqKey] = useState<string>('');
   const [mistralKey, setMistralKey] = useState<string>('');
+  const [geminiSystemConnected, setGeminiSystemConnected] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -74,7 +80,20 @@ function App() {
     setGeminiKey(localStorage.getItem('gemini_api_key') || '');
     setGroqKey(localStorage.getItem('groq_api_key') || '');
     setMistralKey(localStorage.getItem('mistral_api_key') || '');
+    checkSystemKey();
   }, []);
+
+  const checkSystemKey = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio?.hasSelectedApiKey) {
+        try {
+          const hasKey = await aistudio.hasSelectedApiKey();
+          setGeminiSystemConnected(hasKey);
+        } catch (e) {
+          setGeminiSystemConnected(false);
+        }
+    }
+  };
 
   const handleSaveApiKey = (provider: 'GEMINI' | 'GROQ' | 'MISTRAL', key: string) => {
       if (provider === 'GEMINI') {
@@ -87,6 +106,7 @@ function App() {
           setMistralKey(key);
           localStorage.setItem('mistral_api_key', key);
       }
+      checkSystemKey();
   };
 
   const processFile = async (fileObj: UploadedFile) => {
@@ -286,6 +306,8 @@ function App() {
   const completedFilesCount = files.filter(f => f.status === ProcessingStatus.COMPLETED).length;
   const progressPercent = files.length > 0 ? ((completedFilesCount + files.filter(f => f.status === ProcessingStatus.ERROR).length) / files.length) * 100 : 0;
 
+  const isAnyProviderConnected = geminiKey || geminiSystemConnected || groqKey || mistralKey;
+
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-500 ${isDarkMode ? 'bg-[#050505]' : 'bg-[#f8fafc]'}`}>
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -325,8 +347,12 @@ function App() {
                  ))}
              </nav>
              <div className="h-6 w-px bg-slate-200 dark:bg-white/10 mx-2" />
-             <button onClick={() => setIsApiKeyModalOpen(true)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isDarkMode ? 'hover:bg-white/10 text-emerald-400' : 'hover:bg-white/60 text-emerald-600'}`}>
-                <Key size={14} /><span>Providers</span>
+             <button 
+               onClick={() => setIsApiKeyModalOpen(true)} 
+               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${isAnyProviderConnected ? (isDarkMode ? 'text-emerald-400 bg-emerald-400/10' : 'text-emerald-600 bg-emerald-50') : (isDarkMode ? 'text-slate-400 hover:bg-white/10' : 'text-slate-500 hover:bg-white/60')}`}
+             >
+                {isAnyProviderConnected ? <CheckCircle size={14} className="text-emerald-500" /> : <Key size={14} />}
+                <span>{isAnyProviderConnected ? 'Connected' : 'Providers'}</span>
              </button>
              <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-3 rounded-xl transition-all ${isDarkMode ? 'text-gray-400 hover:text-amber-400' : 'text-slate-400 hover:text-amber-500'}`}>
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -401,6 +427,86 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* --- FOOTER UPDATE --- */}
+      <footer className={`mt-auto border-t transition-all duration-300 ${isDarkMode ? 'bg-[#050505]/80 border-white/5 text-slate-400' : 'bg-white text-slate-500 border-slate-200'}`}>
+        <div className="max-w-[1920px] mx-auto px-6 md:px-10 py-12 lg:py-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-12">
+            {/* Brand Column */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/20' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'}`}>
+                  <Layers size={18} />
+                </div>
+                <h4 className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>StockMeta<span className="font-light opacity-70">AI</span></h4>
+              </div>
+              <p className="text-sm leading-relaxed max-w-xs">
+                The intelligent workspace for stock contributors. Generate industry-standard metadata and optimize your portfolio using state-of-the-art computer vision.
+              </p>
+              <div className="flex items-center gap-4 pt-2">
+                <a href="#" aria-label="Twitter" className="hover:text-indigo-500 transition-colors"><Twitter size={20} /></a>
+                <a href="#" aria-label="GitHub" className="hover:text-indigo-500 transition-colors"><Github size={20} /></a>
+                <a href="#" aria-label="Website" className="hover:text-indigo-500 transition-colors"><Globe size={20} /></a>
+              </div>
+            </div>
+
+            {/* Platforms Column */}
+            <div>
+              <h5 className={`text-sm font-bold uppercase tracking-widest mb-6 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Contributor Hubs</h5>
+              <ul className="space-y-3.5 text-sm">
+                <li><a href="https://contributor.stock.adobe.com/" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 flex items-center gap-2 transition-all">Adobe Stock <ExternalLink size={12} className="opacity-40" /></a></li>
+                <li><a href="https://submit.shutterstock.com/" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 flex items-center gap-2 transition-all">Shutterstock <ExternalLink size={12} className="opacity-40" /></a></li>
+                <li><a href="https://workwithus.gettyimages.com/" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 flex items-center gap-2 transition-all">Getty Images <ExternalLink size={12} className="opacity-40" /></a></li>
+                <li><a href="https://www.pond5.com/sell-stock-footage" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 flex items-center gap-2 transition-all">Pond5 <ExternalLink size={12} className="opacity-40" /></a></li>
+              </ul>
+            </div>
+
+            {/* Product Column */}
+            <div>
+              <h5 className={`text-sm font-bold uppercase tracking-widest mb-6 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Resources</h5>
+              <ul className="space-y-3.5 text-sm">
+                <li><button onClick={() => setView('about')} className="hover:text-indigo-500 transition-colors">How it Works</button></li>
+                <li><button onClick={() => setView('calendar')} className="hover:text-indigo-500 transition-colors">Content Calendar</button></li>
+                <li><a href="#" className="hover:text-indigo-500 transition-colors">API Documentation</a></li>
+                <li><a href="#" className="hover:text-indigo-500 transition-colors">Privacy Policy</a></li>
+              </ul>
+            </div>
+
+            {/* Status Column */}
+            <div className="space-y-6">
+              <h5 className={`text-sm font-bold uppercase tracking-widest mb-6 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>System Status</h5>
+              <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-white/5 border-white/5 shadow-inner' : 'bg-slate-50 border-slate-100'}`}>
+                <div className="flex items-center justify-between mb-3.5">
+                  <span className="text-xs font-medium">Core Engine</span>
+                  <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-500 uppercase">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Operational
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">API Gateway</span>
+                  <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase ${isAnyProviderConnected ? 'text-emerald-500' : 'text-amber-500'}`}>
+                    {isAnyProviderConnected ? <><CheckCircle size={10} /> Connected</> : 'Waiting for Key'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-[10px] opacity-60 italic leading-normal">
+                Powered by Google Gemini 3 Flash and multimodal vision experts. 
+              </p>
+            </div>
+          </div>
+
+          <div className={`pt-8 border-t flex flex-col md:flex-row items-center justify-between gap-6 text-xs font-medium ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+            <p>© {new Date().getFullYear()} StockMeta AI. Built for the Contributor Community.</p>
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1.5">
+                Made with <Sparkles size={12} className="text-indigo-500" /> by Designers
+              </span>
+              <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+              <span>Version 2.5.0-Preview</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -61,6 +61,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
     onClose();
   };
 
+  const isGeminiConnected = geminiSystemConnected || geminiKey.length > 0;
+  const isGroqConnected = groqKey.length > 0;
+  const isMistralConnected = mistralKey.length > 0;
+
   if (!isOpen) return null;
 
   return (
@@ -80,14 +84,29 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
         </div>
 
         <div className="flex p-1 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800">
-            <button onClick={() => setActiveTab('GEMINI')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'GEMINI' ? 'text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 shadow-sm' : 'text-slate-400'}`}>
-                <Zap size={14} /> Gemini
+            <button 
+              onClick={() => setActiveTab('GEMINI')} 
+              className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${activeTab === 'GEMINI' ? 'text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 shadow-sm' : 'text-slate-400'}`}
+            >
+                <div className="flex items-center gap-1.5">
+                    <Zap size={14} /> Gemini {isGeminiConnected && <CheckCircle size={10} className="text-emerald-500" />}
+                </div>
             </button>
-            <button onClick={() => setActiveTab('GROQ')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'GROQ' ? 'text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 shadow-sm' : 'text-slate-400'}`}>
-                <Cpu size={14} /> Groq
+            <button 
+              onClick={() => setActiveTab('GROQ')} 
+              className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${activeTab === 'GROQ' ? 'text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 shadow-sm' : 'text-slate-400'}`}
+            >
+                <div className="flex items-center gap-1.5">
+                    <Cpu size={14} /> Groq {isGroqConnected && <CheckCircle size={10} className="text-emerald-500" />}
+                </div>
             </button>
-            <button onClick={() => setActiveTab('MISTRAL')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'MISTRAL' ? 'text-orange-600 dark:text-orange-400 bg-white dark:bg-slate-900 shadow-sm' : 'text-slate-400'}`}>
-                <Eye size={14} /> Mistral
+            <button 
+              onClick={() => setActiveTab('MISTRAL')} 
+              className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${activeTab === 'MISTRAL' ? 'text-orange-600 dark:text-orange-400 bg-white dark:bg-slate-900 shadow-sm' : 'text-slate-400'}`}
+            >
+                <div className="flex items-center gap-1.5">
+                    <Eye size={14} /> Mistral {isMistralConnected && <CheckCircle size={10} className="text-emerald-500" />}
+                </div>
             </button>
         </div>
 
@@ -100,7 +119,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                         {geminiSystemConnected ? <ShieldCheck size={28} /> : <Settings size={28} />}
                     </div>
                     <div>
-                        <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100">{geminiSystemConnected ? 'System Project Active' : 'Managed Project Access'}</h4>
+                        <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100">{geminiSystemConnected ? 'System Connected' : 'Managed Project Access'}</h4>
                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1">Linking a paid Google Cloud project enables unlimited Gemini 3 and high-quality image tools.</p>
                     </div>
                     <button onClick={handleSelectGeminiSystemKey} className={`w-full py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm ${geminiSystemConnected ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}>
@@ -123,9 +142,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                         </label>
                         {geminiKey ? (
                             <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 uppercase">
-                                <CheckCircle size={10} /> Override Enabled
+                                <CheckCircle size={10} /> Connected
                             </span>
-                        ) : null}
+                        ) : (
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Not Configured</span>
+                        )}
                     </div>
                     <div className="relative">
                         <input 
@@ -157,7 +178,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                     <p className="text-xs text-emerald-700 dark:text-emerald-300">Groq powers ultra-fast multimodal inference using <strong>llama-4-scout</strong> for near-instant results.</p>
                 </div>
                 <div className="space-y-3">
-                    <label className="text-xs font-bold uppercase tracking-wider text-emerald-500">Groq API Key</label>
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-emerald-500">Groq API Key</label>
+                        {isGroqConnected && <span className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-1"><CheckCircle size={10} /> Connected</span>}
+                    </div>
                     <div className="relative">
                         <input type="password" value={groqKey} onChange={(e) => setGroqKey(e.target.value)} placeholder="Paste Groq API Key..." className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg pl-10 pr-4 py-3 text-sm font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
                         <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -171,7 +195,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                     <p className="text-xs text-orange-700 dark:text-orange-300">Mistral Pixtral 12B offers high-fidelity visual reasoning, perfect for complex composition analysis.</p>
                 </div>
                 <div className="space-y-3">
-                    <label className="text-xs font-bold uppercase tracking-wider text-orange-500">Mistral API Key</label>
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-orange-500">Mistral API Key</label>
+                        {isMistralConnected && <span className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-1"><CheckCircle size={10} /> Connected</span>}
+                    </div>
                     <div className="relative">
                         <input type="password" value={mistralKey} onChange={(e) => setMistralKey(e.target.value)} placeholder="Paste Mistral API Key..." className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg pl-10 pr-4 py-3 text-sm font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500 outline-none" />
                         <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
