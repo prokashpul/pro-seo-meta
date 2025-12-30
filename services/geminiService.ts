@@ -3,25 +3,15 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { StockMetadata, ModelMode, GenerationSettings } from "../types";
 
 // --- CONFIG ---
-// Basic Text Tasks: 'gemini-3-flash-preview'
 const GEMINI_MODEL_FAST = "gemini-3-flash-preview"; 
-// Complex Text Tasks: 'gemini-3-pro-preview'
 const GEMINI_MODEL_QUALITY = "gemini-3-pro-preview";
 const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const MISTRAL_MODEL = "pixtral-12b-2409";
 
-/**
- * Helper to get the best available Gemini API key.
- * Prioritizes manual override from localStorage, then falls back to environment key.
- */
 const getGeminiKey = () => {
   return localStorage.getItem('gemini_api_key') || process.env.API_KEY || '';
 };
 
-/**
- * Initialize a fresh AI instance.
- * Guidelines: Always create right before use to catch the latest key state.
- */
 const getAI = () => {
   return new GoogleGenAI({ apiKey: getGeminiKey() });
 };
@@ -99,34 +89,98 @@ export const generateImagePrompt = async (
   provider: 'GEMINI' | 'GROQ' | 'MISTRAL' = 'GEMINI',
   apiKey?: string
 ): Promise<string> => {
-  const systemInstruction = `You are a Professional AI Prompt Engineer. Target Style: ${imageType}. Output ONLY the raw prompt text. No conversational filler.`;
+  const prompt = "Write a high-quality, detailed text-to-image prompt (for Midjourney/Dall-E) that would recreate this image. Focus on lighting, composition, style, and subject.";
+  const systemInstruction = `You are a Professional AI Prompt Engineer. Style: ${imageType}. Output ONLY the raw prompt text. No conversational filler.`;
   
   if (provider === 'GEMINI') {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_QUALITY,
-      contents: { parts: [{ inlineData: { mimeType, data: base64Data } }, { text: "Write the text-to-image prompt for this image." }] },
+      contents: { parts: [{ inlineData: { mimeType, data: base64Data } }, { text: prompt }] },
       config: { systemInstruction }
     });
     return response.text || "";
+  } 
+
+  if (provider === 'GROQ' || provider === 'MISTRAL') {
+    const url = provider === 'GROQ' 
+      ? "https://api.groq.com/openai/v1/chat/completions" 
+      : "https://api.mistral.ai/v1/chat/completions";
+    const model = provider === 'GROQ' ? GROQ_MODEL : MISTRAL_MODEL;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }
+          ]}
+        ]
+      })
+    });
+    const result = await response.json();
+    if (result.error) throw new Error(result.error.message);
+    return result.choices[0].message.content;
   }
+
   return ""; 
 };
 
-export const expandTextToPrompts = async (text: string, count: number, style: string, provider: 'GEMINI' | 'GROQ' | 'MISTRAL' = 'GEMINI', apiKey?: string): Promise<string[]> => {
+export const expandTextToPrompts = async (
+  text: string, 
+  count: number, 
+  style: string, 
+  provider: 'GEMINI' | 'GROQ' | 'MISTRAL' = 'GEMINI', 
+  apiKey?: string
+): Promise<string[]> => {
+  const userPrompt = `Expand this concept into ${count} unique, highly-detailed text-to-image prompt variations: "${text}"`;
+  const systemInstruction = `You are an AI Prompt Expansion expert. Style: ${style}. Output ONLY a valid JSON array of strings containing ${count} detailed prompts. Example: ["Prompt 1...", "Prompt 2..."]`;
+
   if (provider === 'GEMINI') {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_FAST,
-      contents: `Expand this concept into ${count} unique variations: "${text}"`,
+      contents: userPrompt,
       config: {
-        systemInstruction: `You are an AI Prompt Expansion expert. Style: ${style}. Output ONLY a JSON array of ${count} detailed prompts.`,
+        systemInstruction,
         responseMimeType: "application/json",
         responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
       }
     });
     return response.text ? JSON.parse(response.text) : [];
   }
+
+  if (provider === 'GROQ' || provider === 'MISTRAL') {
+    const url = provider === 'GROQ' 
+      ? "https://api.groq.com/openai/v1/chat/completions" 
+      : "https://api.mistral.ai/v1/chat/completions";
+    const model = provider === 'GROQ' ? "llama-3.3-70b-versatile" : "mistral-large-latest"; // Using larger text models for expansion
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemInstruction },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" }
+      })
+    });
+    const result = await response.json();
+    if (result.error) throw new Error(result.error.message);
+    
+    const content = result.choices[0].message.content;
+    const parsed = JSON.parse(content);
+    // Handle cases where the model might wrap the array in an object key like "prompts"
+    return Array.isArray(parsed) ? parsed : (parsed.prompts || Object.values(parsed)[0]);
+  }
+
   return [];
 };
 
