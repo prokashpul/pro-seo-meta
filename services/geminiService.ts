@@ -29,17 +29,25 @@ export const generateImageMetadata = async (
   const descMin = settings?.descriptionWordCountMin || 15;
   const descMax = settings?.descriptionWordCountMax || 45;
 
-  let systemInstruction = `You are an elite Stock Photography Metadata Expert. 
-    Strictly output JSON: { "title": "...", "description": "...", "keywords": [], "category": "..." }.
-    Title: Factual, < 70 chars. 
-    Keywords: ${kwMin}-${kwMax} relevant terms, main subject first.
-    Description: ${descMin}-${descMax} words.`;
+  let baseInstruction = `You are a world-class Stock Photography Metadata & SEO Specialist.
+    Your task is to analyze the provided image and generate highly commercial, SEO-optimized metadata for agencies like Adobe Stock and Shutterstock.
+    
+    Strictly output ONLY valid JSON in this format: 
+    { "title": "...", "description": "...", "keywords": [], "category": "..." }
 
-  if (settings?.transparentBackground) systemInstruction += `\n- Detect transparency: If found, title MUST end with "Isolated on Transparent Background".`;
-  if (settings?.whiteBackground) systemInstruction += `\n- Detect white background: If found, title MUST end with "Isolated on White Background".`;
-  if (settings?.singleWordKeywords) systemInstruction += `\n- Keywords MUST be single words only.`;
-  if (settings?.prohibitedWordsEnabled) systemInstruction += `\n- DO NOT use: ${settings.prohibitedWordsText}`;
-  if (settings?.customPromptEnabled) systemInstruction += `\n- User custom rule: ${settings.customPromptText}`;
+    RULES:
+    1. Title: Factual, concise, and keyword-rich. Max 70 characters. No fluff like "A photo of...".
+    2. Description: Detailed, factual description of the scene, subjects, colors, and mood. ${descMin}-${descMax} words.
+    3. Keywords: ${kwMin}-${kwMax} high-volume search terms. Sort by relevance: main subject first, then environment, then technical specs (lighting, angle).
+    4. Category: Select most appropriate industry category (e.g., Business, Technology, Nature, People, Lifestyle, Abstract, Food & Drink).
+    5. No subjective words: Avoid "beautiful", "amazing", "stunning". Use descriptive terms instead.
+    6. Technical terms: Include camera angle (e.g., close-up, low angle) if obvious.`;
+
+  if (settings?.transparentBackground) baseInstruction += `\n- Detect transparency: If found, the title MUST include the phrase "Isolated on Transparent Background".`;
+  if (settings?.whiteBackground) baseInstruction += `\n- Detect white background: If found, the title MUST include the phrase "Isolated on White Background".`;
+  if (settings?.singleWordKeywords) baseInstruction += `\n- Keywords MUST be single words only. No multi-word phrases.`;
+  if (settings?.prohibitedWordsEnabled) baseInstruction += `\n- STRICTLY AVOID these prohibited words: ${settings.prohibitedWordsText}`;
+  if (settings?.customPromptEnabled) baseInstruction += `\n- ADHERE to this custom user rule: ${settings.customPromptText}`;
 
   // Handle Groq Llama Vision
   if (mode === ModelMode.GROQ_VISION) {
@@ -48,13 +56,24 @@ export const generateImageMetadata = async (
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
       body: JSON.stringify({
         model: GROQ_MODEL,
-        messages: [{ role: "system", content: systemInstruction }, { role: "user", content: [{ type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }] }],
-        response_format: { type: "json_object" }
+        messages: [
+          { role: "system", content: baseInstruction }, 
+          { 
+            role: "user", 
+            content: [
+              { type: "text", text: "Generate professional SEO metadata for this stock asset." },
+              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } } 
+            ] 
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2
       })
     });
     const result = await response.json();
     if (result.error) throw new Error(result.error.message);
-    return JSON.parse(result.choices[0].message.content);
+    const content = result.choices[0].message.content;
+    return typeof content === 'string' ? JSON.parse(content) : content;
   }
 
   // Handle Mistral Pixtral Vision
@@ -65,18 +84,23 @@ export const generateImageMetadata = async (
       body: JSON.stringify({
         model: MISTRAL_MODEL,
         messages: [
-          { role: "system", content: systemInstruction },
-          { role: "user", content: [
-            { type: "text", text: "Analyze this image and provide metadata." },
-            { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }
-          ]}
+          { role: "system", content: baseInstruction },
+          { 
+            role: "user", 
+            content: [
+              { type: "text", text: "Analyze this image for commercial stock metadata and return JSON." },
+              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }
+            ]
+          }
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        temperature: 0.2
       })
     });
     const result = await response.json();
     if (result.error) throw new Error(result.error.message);
-    return JSON.parse(result.choices[0].message.content);
+    const content = result.choices[0].message.content;
+    return typeof content === 'string' ? JSON.parse(content) : content;
   }
 
   // Fallback to Gemini (Flash or Pro)
@@ -85,20 +109,26 @@ export const generateImageMetadata = async (
 
   const response = await ai.models.generateContent({
     model: modelId,
-    contents: { parts: [{ inlineData: { mimeType, data: base64Data } }, { text: "Analyze this image and provide metadata." }] },
+    contents: { 
+      parts: [
+        { inlineData: { mimeType, data: base64Data } }, 
+        { text: "Analyze this image for commercial stock photography metadata and generate an SEO optimized JSON response." }
+      ] 
+    },
     config: {
-      systemInstruction,
+      systemInstruction: baseInstruction,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          title: { type: Type.STRING },
-          description: { type: Type.STRING },
-          keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-          category: { type: Type.STRING },
+          title: { type: Type.STRING, description: "SEO optimized title, max 70 chars" },
+          description: { type: Type.STRING, description: "Detailed factual description" },
+          keywords: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array of relevant keywords" },
+          category: { type: Type.STRING, description: "Appropriate stock category" },
         },
         required: ["title", "description", "keywords", "category"],
-      }
+      },
+      temperature: 0.2
     }
   });
 
@@ -115,14 +145,14 @@ export const generateImagePrompt = async (
   apiKey?: string
 ): Promise<string> => {
   const prompt = "Write a high-quality, detailed text-to-image prompt (for Midjourney/Dall-E) that would recreate this image. Focus on lighting, composition, style, and subject.";
-  const systemInstruction = `You are a Professional AI Prompt Engineer. Style: ${imageType}. Output ONLY the raw prompt text. No conversational filler.`;
+  const systemInstruction = `You are a Professional AI Prompt Engineer. Style: ${imageType}. Output ONLY the raw prompt text. No conversational filler. Focus on technical artistic terms (volumetric lighting, photorealistic, 8k, bokeh, etc.).`;
   
   if (provider === 'GEMINI') {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_QUALITY,
       contents: { parts: [{ inlineData: { mimeType, data: base64Data } }, { text: prompt }] },
-      config: { systemInstruction }
+      config: { systemInstruction, temperature: 0.7 }
     });
     return response.text || "";
   } 
@@ -144,7 +174,8 @@ export const generateImagePrompt = async (
             { type: "text", text: prompt },
             { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Data}` } }
           ]}
-        ]
+        ],
+        temperature: 0.7
       })
     });
     const result = await response.json();
@@ -163,7 +194,7 @@ export const expandTextToPrompts = async (
   apiKey?: string
 ): Promise<string[]> => {
   const userPrompt = `Expand this concept into ${count} unique, highly-detailed text-to-image prompt variations: "${text}"`;
-  const systemInstruction = `You are an AI Prompt Expansion expert. Style: ${style}. Output ONLY a valid JSON array of strings containing ${count} detailed prompts. Example: ["Prompt 1...", "Prompt 2..."]`;
+  const systemInstruction = `You are an AI Prompt Expansion expert. Style: ${style}. Output ONLY a valid JSON array of strings containing ${count} detailed prompts. Use varied lighting, camera angles, and textures for each variation.`;
 
   if (provider === 'GEMINI') {
     const ai = getAI();
@@ -173,7 +204,8 @@ export const expandTextToPrompts = async (
       config: {
         systemInstruction,
         responseMimeType: "application/json",
-        responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
+        responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } },
+        temperature: 0.8
       }
     });
     return response.text ? JSON.parse(response.text) : [];
@@ -194,7 +226,8 @@ export const expandTextToPrompts = async (
           { role: "system", content: systemInstruction },
           { role: "user", content: userPrompt }
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        temperature: 0.8
       })
     });
     const result = await response.json();
@@ -202,6 +235,7 @@ export const expandTextToPrompts = async (
     
     const content = result.choices[0].message.content;
     const parsed = JSON.parse(content);
+    // Handle wrapping
     return Array.isArray(parsed) ? parsed : (parsed.prompts || Object.values(parsed)[0]);
   }
 
@@ -212,10 +246,10 @@ export const getTrendingKeywords = async (baseKeywords: string[]): Promise<strin
   const ai = getAI();
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL_QUALITY,
-    contents: `Analyze: ${baseKeywords.slice(0, 5).join(", ")}. Identify 10 high-volume search terms related to current trends.`,
+    contents: `Analyze: ${baseKeywords.slice(0, 5).join(", ")}. Identify 10 high-volume search terms related to current trends in stock photography and commercial design.`,
     config: { tools: [{ googleSearch: {} }] }
   });
-  return (response.text || "").split('\n').map(l => l.trim()).filter(l => l.length > 2);
+  return (response.text || "").split('\n').map(l => l.trim().replace(/^\d+\.\s*/, '')).filter(l => l.length > 2);
 };
 
 export const generateImageFromText = async (
