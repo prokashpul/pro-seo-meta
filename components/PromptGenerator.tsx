@@ -174,21 +174,23 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ onBack }) => {
     if (mode === 'REVERSE') {
       const completed = items.filter(i => i.status === 'completed' && i.prompt);
       if (completed.length === 0) return;
-      rows = [['Original Filename', 'Generated Prompt']];
+      // CSV only generates prompts, no file names
+      rows = [['Prompt']];
       completed.forEach(item => {
-        rows.push([escape(item.file.name), escape(item.prompt)]);
+        rows.push([escape(item.prompt)]);
       });
-      filenameBase = 'reverse_image_prompts';
+      filenameBase = 'reverse_prompts_only';
     } else {
       const completed = expansionItems.filter(i => i.status === 'completed' && i.generatedPrompts.length > 0);
       if (completed.length === 0) return;
-      rows = [['Original Concept', 'Style', 'Variation #', 'Expanded Prompt']];
+      // CSV only generates prompts for expanded text
+      rows = [['Prompt']];
       completed.forEach(item => {
-        item.generatedPrompts.forEach((p, idx) => {
-          rows.push([escape(item.originalText), escape(item.imageType), (idx + 1).toString(), escape(p)]);
+        item.generatedPrompts.forEach((p) => {
+          rows.push([escape(p)]);
         });
       });
-      filenameBase = 'expanded_text_prompts';
+      filenameBase = 'expanded_prompts_only';
     }
 
     const csvContent = rows.map(r => r.join(',')).join('\n');
