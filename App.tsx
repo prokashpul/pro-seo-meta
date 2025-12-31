@@ -14,7 +14,7 @@ import { EventCalendar } from './components/EventCalendar';
 import { 
   Trash2, Download, CheckSquare, Edit3, Loader2, Sparkles, Sun, Moon, Key, 
   Info, Home, Layers, XCircle, Wand2, Calendar, CheckCircle, 
-  Twitter, Github, Globe, ExternalLink 
+  Twitter, Github, Globe, ExternalLink, FileText 
 } from 'lucide-react';
 import JSZip from 'jszip';
 
@@ -223,6 +223,59 @@ function App() {
     setSelectedIds(new Set());
   };
 
+  const generateMetadataCSVContent = (items: UploadedFile[]) => {
+    const csvRows = [['Filename', 'Title', 'Description', 'Keywords', 'Category']];
+    const escape = (str: string) => `"${str.replace(/"/g, '""')}"`;
+    
+    items.forEach(f => {
+      if (!f.metadata) return;
+      const m = f.metadata;
+      
+      let finalBase = renameOnExport 
+          ? (m.title.replace(/[^a-z0-9\s-]/gi, '').trim().replace(/\s+/g, '_').substring(0, 100) || "image")
+          : f.file.name.substring(0, f.file.name.lastIndexOf('.'));
+
+      const originalExt = f.file.name.split('.').pop() || 'jpg';
+      const imageFilename = `${finalBase}.${originalExt}`;
+      
+      // Add row for the Preview Image
+      csvRows.push([
+        escape(imageFilename),
+        escape(m.title),
+        escape(m.description),
+        escape(m.keywords.join(', ')),
+        escape(m.category)
+      ]);
+
+      // If a vector file is present, add a separate row for it as well
+      if (f.vectorFile) {
+        const vectorExt = f.vectorFile.name.split('.').pop() || 'eps';
+        const vectorFilename = `${finalBase}.${vectorExt}`;
+        csvRows.push([
+          escape(vectorFilename),
+          escape(m.title),
+          escape(m.description),
+          escape(m.keywords.join(', ')),
+          escape(m.category)
+        ]);
+      }
+    });
+    return csvRows.map(r => r.join(',')).join('\n');
+  };
+
+  const handleExportCSVOnly = () => {
+    const completedFilesList = files.filter(f => f.status === ProcessingStatus.COMPLETED && f.metadata);
+    if (completedFilesList.length === 0) return;
+    
+    const csvContent = generateMetadataCSVContent(completedFilesList);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `stock_metadata_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   const handleExportZip = async () => {
     const completedFilesList = files.filter(f => f.status === ProcessingStatus.COMPLETED && f.metadata);
     if (completedFilesList.length === 0) return;
@@ -231,6 +284,7 @@ function App() {
       const zip = new JSZip();
       const usedFilenames = new Set<string>();
       const csvRows = [['Filename', 'Title', 'Description', 'Keywords', 'Category']];
+      const escape = (str: string) => `"${str.replace(/"/g, '""')}"`;
 
       completedFilesList.forEach((f) => {
         const m = f.metadata!;
@@ -241,27 +295,52 @@ function App() {
             
         let counter = 1;
         const base = finalBase;
-        while (usedFilenames.has(`${finalBase}.${originalExt}`)) { finalBase = `${base}_${counter}`; counter++; }
+        // Check both possible extensions to ensure filename uniqueness for the asset pair
+        while (usedFilenames.has(`${finalBase}.${originalExt}`)) { 
+            finalBase = `${base}_${counter}`; 
+            counter++; 
+        }
+        
         const imageFilename = `${finalBase}.${originalExt}`;
         usedFilenames.add(imageFilename);
-
         zip.file(imageFilename, f.file);
-        const escape = (str: string) => `"${str.replace(/"/g, '""')}"`;
-        csvRows.push([escape(imageFilename), escape(m.title), escape(m.description), escape(m.keywords.join(', ')), escape(m.category)]);
+
+        // Add metadata row for image
+        csvRows.push([
+            escape(imageFilename), 
+            escape(m.title), 
+            escape(m.description), 
+            escape(m.keywords.join(', ')), 
+            escape(m.category)
+        ]);
 
         if (f.vectorFile) {
             const vectorExt = f.vectorFile.name.split('.').pop() || 'eps';
-            zip.file(`${finalBase}.${vectorExt}`, f.vectorFile);
+            const vectorFilename = `${finalBase}.${vectorExt}`;
+            zip.file(vectorFilename, f.vectorFile);
+            usedFilenames.add(vectorFilename);
+
+            // Add separate metadata row for vector
+            csvRows.push([
+                escape(vectorFilename), 
+                escape(m.title), 
+                escape(m.description), 
+                escape(m.keywords.join(', ')), 
+                escape(m.category)
+            ]);
         }
       });
 
-      zip.file("metadata.csv", csvRows.map(r => r.join(',')).join('\n'));
+      zip.file("metadata_adobe_shutter.csv", csvRows.map(r => r.join(',')).join('\n'));
       const content = await zip.generateAsync({ type: "blob" });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(content);
       link.download = `stock_assets_${new Date().toISOString().slice(0, 10)}.zip`;
       link.click();
-    } catch (e) { alert("Zip export failed"); } finally { setIsExporting(false); }
+    } catch (e) { 
+      console.error(e);
+      alert("Zip export failed"); 
+    } finally { setIsExporting(false); }
   };
 
   const filteredFiles = files.filter(f => statusFilter === 'ALL' || f.status === statusFilter);
@@ -407,9 +486,24 @@ function App() {
                               ) : (
                                   <button onClick={handleStopBatch} className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-bold shadow-md shadow-red-500/20"><XCircle size={16} /> Stop</button>
                               )}
-                              <button onClick={handleExportZip} disabled={completedFilesCount === 0 || isExporting} className="flex items-center gap-2 px-6 py-2.5 rounded-lg border text-sm font-bold transition-all border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 disabled:opacity-50">
-                                 {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} Export
-                              </button>
+                              
+                              <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl">
+                                <button 
+                                  onClick={handleExportCSVOnly} 
+                                  disabled={completedFilesCount === 0} 
+                                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50"
+                                >
+                                  <FileText size={16} /> CSV
+                                </button>
+                                <button 
+                                  onClick={handleExportZip} 
+                                  disabled={completedFilesCount === 0 || isExporting} 
+                                  className="flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-md disabled:opacity-50"
+                                >
+                                  {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} ZIP
+                                </button>
+                              </div>
+
                               <button onClick={handleClearAll} className="p-3 text-slate-400 hover:text-red-500 rounded-lg"><Trash2 size={18} /></button>
                            </div>
                         </div>
