@@ -19,7 +19,6 @@ import {
 import JSZip from 'jszip';
 
 function App() {
-  const [geminiKey, setGeminiKey] = useState<string>('');
   const [groqKey, setGroqKey] = useState<string>('');
   const [mistralKey, setMistralKey] = useState<string>('');
   const [geminiSystemConnected, setGeminiSystemConnected] = useState<boolean>(false);
@@ -77,7 +76,6 @@ function App() {
 
   // LOAD SAVED KEYS
   useEffect(() => {
-    setGeminiKey(localStorage.getItem('gemini_api_key') || '');
     setGroqKey(localStorage.getItem('groq_api_key') || '');
     setMistralKey(localStorage.getItem('mistral_api_key') || '');
     checkSystemKey();
@@ -96,10 +94,7 @@ function App() {
   };
 
   const handleSaveApiKey = (provider: 'GEMINI' | 'GROQ' | 'MISTRAL', key: string) => {
-      if (provider === 'GEMINI') {
-          setGeminiKey(key);
-          localStorage.setItem('gemini_api_key', key);
-      } else if (provider === 'GROQ') {
+      if (provider === 'GROQ') {
           setGroqKey(key);
           localStorage.setItem('groq_api_key', key);
       } else if (provider === 'MISTRAL') {
@@ -385,7 +380,7 @@ function App() {
   const completedFilesCount = files.filter(f => f.status === ProcessingStatus.COMPLETED).length;
   const progressPercent = files.length > 0 ? ((completedFilesCount + files.filter(f => f.status === ProcessingStatus.ERROR).length) / files.length) * 100 : 0;
 
-  const isAnyProviderConnected = geminiKey || geminiSystemConnected || groqKey || mistralKey;
+  const isAnyProviderConnected = geminiSystemConnected || groqKey || mistralKey;
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-700 ${isDarkMode ? 'bg-[#050505]' : 'bg-[#fcfdfe]'}`}>
@@ -405,7 +400,6 @@ function App() {
         isOpen={isApiKeyModalOpen} 
         onClose={() => setIsApiKeyModalOpen(false)} 
         onSave={(p, k) => handleSaveApiKey(p as any, k)} 
-        currentGeminiKey={geminiKey}
         currentGroqKey={groqKey}
         currentMistralKey={mistralKey}
       />

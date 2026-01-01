@@ -167,34 +167,36 @@ export const PromptGenerator: React.FC<PromptGeneratorProps> = ({ onBack }) => {
   };
 
   const handleExportCSV = () => {
-    const escape = (str: string) => `"${str.replace(/"/g, '""')}"`;
+    const escape = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
     let rows: string[][] = [];
     let filenameBase = '';
 
     if (mode === 'REVERSE') {
       const completed = items.filter(i => i.status === 'completed' && i.prompt);
       if (completed.length === 0) return;
-      // CSV only generates prompts, no file names
-      rows = [['Prompt']];
+      
+      rows = [['Source Filename', 'Generated AI Prompt']];
       completed.forEach(item => {
-        rows.push([escape(item.prompt)]);
+        rows.push([escape(item.file.name), escape(item.prompt)]);
       });
-      filenameBase = 'reverse_prompts_only';
+      filenameBase = 'image_to_prompts';
     } else {
       const completed = expansionItems.filter(i => i.status === 'completed' && i.generatedPrompts.length > 0);
       if (completed.length === 0) return;
-      // CSV only generates prompts for expanded text
-      rows = [['Prompt']];
+      
+      rows = [['Original Concept', 'Target Style', 'Expanded AI Prompt']];
       completed.forEach(item => {
         item.generatedPrompts.forEach((p) => {
-          rows.push([escape(p)]);
+          rows.push([escape(item.originalText), escape(item.imageType), escape(p)]);
         });
       });
-      filenameBase = 'expanded_prompts_only';
+      filenameBase = 'expanded_text_prompts';
     }
 
+    // Join rows with commas and lines with newlines
     const csvContent = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Add UTF-8 Byte Order Mark (BOM) for Excel compatibility
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `${filenameBase}_${new Date().toISOString().slice(0, 10)}.csv`;

@@ -6,7 +6,6 @@ interface ApiKeyModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (provider: 'GEMINI' | 'GROQ' | 'MISTRAL', key: string) => void;
-  currentGeminiKey: string;
   currentGroqKey: string;
   currentMistralKey: string;
 }
@@ -15,24 +14,21 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   isOpen, 
   onClose, 
   onSave, 
-  currentGeminiKey,
   currentGroqKey,
   currentMistralKey
 }) => {
   const [activeTab, setActiveTab] = useState<'GEMINI' | 'GROQ' | 'MISTRAL'>('GEMINI');
-  const [geminiKey, setGeminiKey] = useState('');
   const [groqKey, setGroqKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
   const [geminiSystemConnected, setGeminiSystemConnected] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
-      setGeminiKey(currentGeminiKey || '');
       setGroqKey(currentGroqKey || '');
       setMistralKey(currentMistralKey || '');
       checkGeminiSystemState();
     }
-  }, [isOpen, currentGeminiKey, currentGroqKey, currentMistralKey]);
+  }, [isOpen, currentGroqKey, currentMistralKey]);
 
   const checkGeminiSystemState = async () => {
     const aistudio = (window as any).aistudio;
@@ -50,18 +46,18 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
       const aistudio = (window as any).aistudio;
       if (aistudio?.openSelectKey) {
           await aistudio.openSelectKey();
+          // Assuming selection was successful as per guidelines to mitigate race condition
           setGeminiSystemConnected(true);
       }
   };
 
   const handleSave = () => {
-    onSave('GEMINI', geminiKey);
     onSave('GROQ', groqKey);
     onSave('MISTRAL', mistralKey);
     onClose();
   };
 
-  const isGeminiConnected = geminiSystemConnected || geminiKey.length > 0;
+  const isGeminiConnected = geminiSystemConnected;
   const isGroqConnected = groqKey.length > 0;
   const isMistralConnected = mistralKey.length > 0;
 
@@ -126,47 +122,15 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
                         {geminiSystemConnected ? <RefreshCw size={16} /> : <Key size={16} />}
                         {geminiSystemConnected ? 'Switch System Key' : 'Connect System Key'}
                     </button>
-                </div>
-
-                <div className="relative flex items-center py-2">
-                    <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                    <span className="flex-shrink mx-4 text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Manual Override</span>
-                    <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
-                </div>
-
-                {/* Manual Key Input */}
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                            Gemini API Key (Free Tier)
-                        </label>
-                        {geminiKey ? (
-                            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 uppercase">
-                                <CheckCircle size={10} /> Connected
-                            </span>
-                        ) : (
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">Not Configured</span>
-                        )}
-                    </div>
-                    <div className="relative">
-                        <input 
-                            type="password" 
-                            value={geminiKey} 
-                            onChange={(e) => setGeminiKey(e.target.value)} 
-                            placeholder="Paste your private API key here..." 
-                            className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-lg pl-10 pr-4 py-3 text-sm font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
-                        />
-                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    </div>
-                    <div className="flex flex-col gap-2 p-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg">
+                    <div className="flex flex-col gap-2 p-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg w-full">
                         <div className="flex items-start gap-2">
                             <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
-                            <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-normal">
-                                Providing a manual key will override the system-managed project. This is ideal if you have a personal AI Studio key.
+                            <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-normal text-left">
+                                Users must select an API key from a paid GCP project. Check billing documentation for details.
                             </p>
                         </div>
-                        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:text-indigo-400 font-bold flex items-center gap-1 self-end">
-                            Get your free API Key <ExternalLink size={10} />
+                        <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-[10px] text-indigo-500 hover:text-indigo-400 font-bold flex items-center gap-1 self-end">
+                            Billing Documentation <ExternalLink size={10} />
                         </a>
                     </div>
                 </div>

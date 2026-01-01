@@ -8,14 +8,6 @@ const GEMINI_MODEL_QUALITY = "gemini-3-pro-preview";
 const GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const MISTRAL_MODEL = "pixtral-12b-2409";
 
-const getGeminiKey = () => {
-  return localStorage.getItem('gemini_api_key') || process.env.API_KEY || '';
-};
-
-const getAI = () => {
-  return new GoogleGenAI({ apiKey: getGeminiKey() });
-};
-
 // --- MAIN EXPORT: GENERATE METADATA ---
 export const generateImageMetadata = async (
   base64Data: string,
@@ -103,8 +95,8 @@ export const generateImageMetadata = async (
     return typeof content === 'string' ? JSON.parse(content) : content;
   }
 
-  // Fallback to Gemini (Flash or Pro)
-  const ai = getAI();
+  // Gemini (Flash or Pro) initialization right before the call
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const modelId = mode === ModelMode.QUALITY ? GEMINI_MODEL_QUALITY : GEMINI_MODEL_FAST;
 
   const response = await ai.models.generateContent({
@@ -148,7 +140,7 @@ export const generateImagePrompt = async (
   const systemInstruction = `You are a Professional AI Prompt Engineer. Style: ${imageType}. Output ONLY the raw prompt text. No conversational filler. Focus on technical artistic terms (volumetric lighting, photorealistic, 8k, bokeh, etc.).`;
   
   if (provider === 'GEMINI') {
-    const ai = getAI();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_QUALITY,
       contents: { parts: [{ inlineData: { mimeType, data: base64Data } }, { text: prompt }] },
@@ -197,7 +189,7 @@ export const expandTextToPrompts = async (
   const systemInstruction = `You are an AI Prompt Expansion expert. Style: ${style}. Output ONLY a valid JSON array of strings containing ${count} detailed prompts. Use varied lighting, camera angles, and textures for each variation.`;
 
   if (provider === 'GEMINI') {
-    const ai = getAI();
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_FAST,
       contents: userPrompt,
@@ -235,7 +227,6 @@ export const expandTextToPrompts = async (
     
     const content = result.choices[0].message.content;
     const parsed = JSON.parse(content);
-    // Handle wrapping
     return Array.isArray(parsed) ? parsed : (parsed.prompts || Object.values(parsed)[0]);
   }
 
@@ -243,13 +234,26 @@ export const expandTextToPrompts = async (
 };
 
 export const getTrendingKeywords = async (baseKeywords: string[]): Promise<string[]> => {
-  const ai = getAI();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL_QUALITY,
     contents: `Analyze: ${baseKeywords.slice(0, 5).join(", ")}. Identify 10 high-volume search terms related to current trends in stock photography and commercial design.`,
     config: { tools: [{ googleSearch: {} }] }
   });
-  return (response.text || "").split('\n').map(l => l.trim().replace(/^\d+\.\s*/, '')).filter(l => l.length > 2);
+  
+  const keywords = (response.text || "").split('\n').map(l => l.trim().replace(/^\d+\.\s*/, '')).filter(l => l.length > 2);
+  
+  // Extracting URLs from grounding metadata as required by the guidelines
+  const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+  if (groundingChunks) {
+    groundingChunks.forEach((chunk: any) => {
+      if (chunk.web?.uri) {
+        keywords.push(chunk.web.uri);
+      }
+    });
+  }
+  
+  return keywords;
 };
 
 export const generateImageFromText = async (
@@ -260,7 +264,7 @@ export const generateImageFromText = async (
   sourceImage?: { base64: string; mimeType: string },
   advancedSettings?: { negativePrompt?: string; guidanceScale?: number; seed?: number }
 ): Promise<string> => {
-  const ai = getAI();
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   let finalPrompt = prompt;
   if (advancedSettings?.negativePrompt) {
