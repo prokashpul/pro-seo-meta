@@ -19,6 +19,7 @@ import {
 import JSZip from 'jszip';
 
 function App() {
+  const [geminiKey, setGeminiKey] = useState<string>('');
   const [groqKey, setGroqKey] = useState<string>('');
   const [mistralKey, setMistralKey] = useState<string>('');
   const [geminiSystemConnected, setGeminiSystemConnected] = useState<boolean>(false);
@@ -76,6 +77,7 @@ function App() {
 
   // LOAD SAVED KEYS
   useEffect(() => {
+    setGeminiKey(localStorage.getItem('gemini_api_key') || '');
     setGroqKey(localStorage.getItem('groq_api_key') || '');
     setMistralKey(localStorage.getItem('mistral_api_key') || '');
     checkSystemKey();
@@ -94,7 +96,10 @@ function App() {
   };
 
   const handleSaveApiKey = (provider: 'GEMINI' | 'GROQ' | 'MISTRAL', key: string) => {
-      if (provider === 'GROQ') {
+      if (provider === 'GEMINI') {
+          setGeminiKey(key);
+          localStorage.setItem('gemini_api_key', key);
+      } else if (provider === 'GROQ') {
           setGroqKey(key);
           localStorage.setItem('groq_api_key', key);
       } else if (provider === 'MISTRAL') {
@@ -116,11 +121,8 @@ function App() {
       
       let externalKey = "";
       if (modelMode === ModelMode.GROQ_VISION) externalKey = groqKey;
-      if (modelMode === ModelMode.MISTRAL_PIXTRAL) externalKey = mistralKey;
-
-      if ((modelMode === ModelMode.GROQ_VISION || modelMode === ModelMode.MISTRAL_PIXTRAL) && !externalKey) {
-          throw new Error(`${modelMode === ModelMode.GROQ_VISION ? 'Groq' : 'Mistral'} API Key missing`);
-      }
+      else if (modelMode === ModelMode.MISTRAL_PIXTRAL) externalKey = mistralKey;
+      else externalKey = geminiKey; // Fallback to manual gemini key for Gemini modes if provided
 
       const metadata = await generateImageMetadata(
           base64,
@@ -380,7 +382,7 @@ function App() {
   const completedFilesCount = files.filter(f => f.status === ProcessingStatus.COMPLETED).length;
   const progressPercent = files.length > 0 ? ((completedFilesCount + files.filter(f => f.status === ProcessingStatus.ERROR).length) / files.length) * 100 : 0;
 
-  const isAnyProviderConnected = geminiSystemConnected || groqKey || mistralKey;
+  const isAnyProviderConnected = geminiSystemConnected || geminiKey || groqKey || mistralKey;
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-700 ${isDarkMode ? 'bg-[#050505]' : 'bg-[#fcfdfe]'}`}>
@@ -400,6 +402,7 @@ function App() {
         isOpen={isApiKeyModalOpen} 
         onClose={() => setIsApiKeyModalOpen(false)} 
         onSave={(p, k) => handleSaveApiKey(p as any, k)} 
+        currentGeminiKey={geminiKey}
         currentGroqKey={groqKey}
         currentMistralKey={mistralKey}
       />
@@ -514,7 +517,7 @@ function App() {
                           onRegenerate={handleRegenerate}
                           onUpdateMetadata={handleUpdateMetadata}
                           onAddTrending={handleAddTrending}
-                          apiKey={modelMode === ModelMode.GROQ_VISION ? groqKey : modelMode === ModelMode.MISTRAL_PIXTRAL ? mistralKey : ""}
+                          apiKey={modelMode === ModelMode.GROQ_VISION ? groqKey : modelMode === ModelMode.MISTRAL_PIXTRAL ? mistralKey : geminiKey}
                         />
                       ))}
                     </div>

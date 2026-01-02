@@ -95,8 +95,11 @@ export const generateImageMetadata = async (
     return typeof content === 'string' ? JSON.parse(content) : content;
   }
 
-  // Gemini (Flash or Pro) initialization right before the call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Gemini (Flash or Pro) initialization
+  const keyToUse = apiKey || process.env.API_KEY || "";
+  if (!keyToUse) throw new Error("Gemini API Key missing. Please provide a manual key or connect via AI Studio.");
+  
+  const ai = new GoogleGenAI({ apiKey: keyToUse });
   const modelId = mode === ModelMode.QUALITY ? GEMINI_MODEL_QUALITY : GEMINI_MODEL_FAST;
 
   const response = await ai.models.generateContent({
@@ -140,7 +143,8 @@ export const generateImagePrompt = async (
   const systemInstruction = `You are a Professional AI Prompt Engineer. Style: ${imageType}. Output ONLY the raw prompt text. No conversational filler. Focus on technical artistic terms (volumetric lighting, photorealistic, 8k, bokeh, etc.).`;
   
   if (provider === 'GEMINI') {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const keyToUse = apiKey || process.env.API_KEY || "";
+    const ai = new GoogleGenAI({ apiKey: keyToUse });
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_QUALITY,
       contents: { parts: [{ inlineData: { mimeType, data: base64Data } }, { text: prompt }] },
@@ -189,7 +193,8 @@ export const expandTextToPrompts = async (
   const systemInstruction = `You are an AI Prompt Expansion expert. Style: ${style}. Output ONLY a valid JSON array of strings containing ${count} detailed prompts. Use varied lighting, camera angles, and textures for each variation.`;
 
   if (provider === 'GEMINI') {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const keyToUse = apiKey || process.env.API_KEY || "";
+    const ai = new GoogleGenAI({ apiKey: keyToUse });
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL_FAST,
       contents: userPrompt,
@@ -233,8 +238,9 @@ export const expandTextToPrompts = async (
   return [];
 };
 
-export const getTrendingKeywords = async (baseKeywords: string[]): Promise<string[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+export const getTrendingKeywords = async (baseKeywords: string[], apiKey?: string): Promise<string[]> => {
+  const keyToUse = apiKey || process.env.API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey: keyToUse });
   const response = await ai.models.generateContent({
     model: GEMINI_MODEL_QUALITY,
     contents: `Analyze: ${baseKeywords.slice(0, 5).join(", ")}. Identify 10 high-volume search terms related to current trends in stock photography and commercial design.`,
@@ -260,11 +266,12 @@ export const generateImageFromText = async (
   prompt: string, 
   aspectRatio: string, 
   model: string, 
-  _apiKey: string, 
+  apiKey: string, 
   sourceImage?: { base64: string; mimeType: string },
   advancedSettings?: { negativePrompt?: string; guidanceScale?: number; seed?: number }
 ): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const keyToUse = apiKey || process.env.API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey: keyToUse });
   
   let finalPrompt = prompt;
   if (advancedSettings?.negativePrompt) {

@@ -92,8 +92,8 @@ export const MetadataCard: React.FC<MetadataCardProps> = ({
     if (!localMetadata?.keywords) return;
     setIsSearchingTrends(true);
     try {
-      // getTrendingKeywords only accepts one argument: baseKeywords: string[]
-      const trends = await getTrendingKeywords(localMetadata.keywords);
+      // Pass apiKey if available
+      const trends = await getTrendingKeywords(localMetadata.keywords, apiKey);
       if (trends.length > 0) onAddTrending(item.id, trends);
     } catch (e) {
       console.error("Failed to fetch trends", e);
