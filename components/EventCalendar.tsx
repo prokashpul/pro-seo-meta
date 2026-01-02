@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Calendar, ArrowLeft, UploadCloud, Tag, Globe, MapPin } from 'lucide-react';
+import { Calendar, ArrowLeft, UploadCloud, Tag, Globe, MapPin, Info } from 'lucide-react';
 
 interface EventCalendarProps {
   onBack?: () => void;
@@ -27,238 +28,249 @@ interface MonthData {
 const calendarData: MonthData[] = [
   {
     month: "January",
-    focus: "Spring Prep & Fitness",
+    focus: "New Year & Health",
     events: [
       { date: "Jan 01", name: "New Year's Day" },
-      { date: "Jan 15", name: "Blue Monday" },
-      { date: "Jan 29", name: "Tax Season Prep" }
+      { date: "Jan 20", name: "Martin Luther King Jr. Day" },
+      { date: "Jan 29", name: "Lunar New Year (Year of the Snake)" }
     ],
-    submissionDeadlines: ["Easter", "Spring Break", "Earth Day", "Mother's Day"],
-    keywords: ["fitness", "gym", "healthy food", "taxes", "spring flowers", "gardening", "cleaning"],
+    submissionDeadlines: ["Easter Sunday", "Earth Day", "Mother's Day", "Spring Outdoors"],
+    keywords: ["fitness", "resolutions", "detox", "healthy eating", "organization", "spring flowers", "gardening"],
     
-    indianFocus: "Patriotism & Harvest",
+    indianFocus: "Harvest & Unity",
     indianEvents: [
       { date: "Jan 13", name: "Lohri" },
       { date: "Jan 14", name: "Makar Sankranti / Pongal" },
-      { date: "Jan 26", name: "Republic Day" }
+      { date: "Jan 26", name: "Republic Day" },
+      { date: "Jan 30", name: "Vasant Panchami" }
     ],
-    indianDeadlines: ["Holi", "Wedding Season", "Summer Vacation"],
-    indianKeywords: ["tricolor", "india flag", "kite flying", "bonfire", "sugarcane", "harvest", "rangoli"]
+    indianDeadlines: ["Holi Festival", "Summer Travel", "Wedding Season Peak"],
+    indianKeywords: ["tricolor", "patriotic", "kites", "harvest", "sesame sweets", "yellow clothes", "bonfire"]
   },
   {
     month: "February",
-    focus: "Love & Spring",
+    focus: "Love & Inclusion",
     events: [
-      { date: "Feb 09", name: "Super Bowl" },
+      { date: "Feb 01", name: "Black History Month Begins" },
       { date: "Feb 14", name: "Valentine's Day" },
-      { date: "Feb 20", name: "Family Day (CA)" }
+      { date: "Feb 17", name: "Presidents' Day (USA)" }
     ],
-    submissionDeadlines: ["Father's Day", "Graduation", "Summer Vacation", "Wedding Season"],
-    keywords: ["love", "romance", "couple", "graduation", "diploma", "beach", "summer travel"],
+    submissionDeadlines: ["Pride Month", "Father's Day", "Graduation Season", "Summer Vacation"],
+    keywords: ["romance", "gift", "heart", "civil rights", "equality", "beach", "summer fashion", "travel"],
 
-    indianFocus: "Spring & Weddings",
+    indianFocus: "Spring & Devotion",
     indianEvents: [
-      { date: "Feb 02", name: "Vasant Panchami" },
-      { date: "Feb 26", name: "Maha Shivaratri" }
+      { date: "Feb 12", name: "Guru Ravidas Jayanti" },
+      { date: "Feb 26", name: "Maha Shivaratri" },
+      { date: "Feb --", name: "Spring Wedding Peak" }
     ],
-    indianDeadlines: ["Raksha Bandhan", "Independence Day"],
-    indianKeywords: ["yellow dress", "mustard fields", "wedding couple", "mandap", "shiva", "temple", "flowers"]
+    indianDeadlines: ["Baisakhi", "Akshaya Tritiya", "Eid-ul-Fitr (Early Bird)"],
+    indianKeywords: ["shiva", "temple", "flowers", "marigold", "bridal jewelry", "ethnic wear", "spring fields"]
   },
   {
     month: "March",
-    focus: "Outdoors & Green",
+    focus: "Renewal & Nature",
     events: [
       { date: "Mar 08", name: "Intl. Women's Day" },
       { date: "Mar 17", name: "St. Patrick's Day" },
-      { date: "Mar 20", name: "First Day of Spring" }
+      { date: "Mar 20", name: "Spring Equinox" },
+      { date: "Mar 31", name: "Ramadan Begins (Approx)" }
     ],
-    submissionDeadlines: ["4th of July", "Back to School", "Pride Month"],
-    keywords: ["green", "clover", "easter eggs", "spring cleaning", "bbq", "grilling", "rainbow flag"],
+    submissionDeadlines: ["4th of July", "Back to School (USA)", "Summer Festivals"],
+    keywords: ["empowerment", "clover", "greenery", "fresh start", "outdoor activities", "hiking", "picnic"],
 
-    indianFocus: "Colors of Spring",
+    indianFocus: "Color & Harvest",
     indianEvents: [
       { date: "Mar 14", name: "Holi" },
-      { date: "Mar 30", name: "Chaitra Navratri" }
+      { date: "Mar 20", name: "Chaitra Navratri Begins" },
+      { date: "Mar 30", name: "Gudi Padwa / Ugadi" }
     ],
-    indianDeadlines: ["Ganesh Chaturthi", "Onam"],
-    indianKeywords: ["gulal", "colors", "pichkari", "water fight", "indian sweets", "thandai", "worship"]
+    indianDeadlines: ["Monsoon Season", "International Yoga Day"],
+    indianKeywords: ["gulal", "colors", "pichkari", "thandai", "neem leaves", "traditional rituals", "village life"]
   },
   {
     month: "April",
-    focus: "Eco & Taxes",
+    focus: "Environment & Faith",
     events: [
       { date: "Apr 15", name: "Tax Day (USA)" },
       { date: "Apr 20", name: "Easter Sunday" },
       { date: "Apr 22", name: "Earth Day" }
     ],
-    submissionDeadlines: ["Back to School", "Autumn/Fall", "Halloween"],
-    keywords: ["recycle", "planet", "planting", "education", "classroom", "autumn leaves", "pumpkin"],
+    submissionDeadlines: ["Autumn / Fall Foliage", "Halloween", "Winter Prep"],
+    keywords: ["recycling", "sustainability", "bunny", "eggs", "finance", "accounting", "growth", "savings"],
 
-    indianFocus: "Harvest & New Year",
+    indianFocus: "Festive Harvest",
     indianEvents: [
-      { date: "Apr 06", name: "Rama Navami" },
-      { date: "Apr 10", name: "Mahavir Jayanti" },
-      { date: "Apr 13", name: "Baisakhi / Puthandu" }
+      { date: "Apr 06", name: "Ram Navami" },
+      { date: "Apr 13", name: "Baisakhi / Vishu / Puthandu" },
+      { date: "Apr 14", name: "Ambedkar Jayanti" },
+      { date: "Apr 20", name: "Akshaya Tritiya" }
     ],
-    indianDeadlines: ["Diwali", "Dussehra"],
-    indianKeywords: ["wheat harvest", "bhangra", "turban", "new year", "temple", "prayer", "golden temple"]
+    indianDeadlines: ["Independence Day", "Raksha Bandhan"],
+    indianKeywords: ["gold jewelry", "new beginnings", "wheat fields", "bhangra", "turban", "temple visit", "puja thali"]
   },
   {
     month: "May",
-    focus: "Graduation & Moms",
+    focus: "Family & Celebration",
     events: [
       { date: "May 05", name: "Cinco de Mayo" },
       { date: "May 11", name: "Mother's Day" },
       { date: "May 26", name: "Memorial Day" }
     ],
-    submissionDeadlines: ["Halloween", "Thanksgiving", "Black Friday"],
-    keywords: ["mom", "family", "cap and gown", "halloween costume", "spooky", "turkey", "shopping"],
+    submissionDeadlines: ["Black Friday", "Cyber Monday", "Thanksgiving", "Christmas Early Bird"],
+    keywords: ["moms", "family brunch", "patriotism", "shopping", "holiday planning", "gift guide", "winter fashion"],
 
-    indianFocus: "Summer Vacation",
+    indianFocus: "Summer Heat & Bliss",
     indianEvents: [
       { date: "May 12", name: "Buddha Purnima" },
-      { date: "May --", name: "Summer Holidays" }
+      { date: "May --", name: "Summer Holidays Begin" },
+      { date: "May --", name: "Mango Season Peak" }
     ],
-    indianDeadlines: ["Wedding Season (Winter)", "Diwali"],
-    indianKeywords: ["mangoes", "hill station", "train travel", "ice cream", "heat wave", "summer camp", "meditation"]
+    indianDeadlines: ["Ganesh Chaturthi", "Onam", "Teachers' Day"],
+    indianKeywords: ["alphonso mango", "hill station", "swimming", "ice cream", "summer camp", "vacation", "train travel"]
   },
   {
     month: "June",
-    focus: "Summer & Pride",
+    focus: "Outdoors & Freedom",
     events: [
+      { date: "Jun 08", name: "World Oceans Day" },
       { date: "Jun 15", name: "Father's Day" },
       { date: "Jun 19", name: "Juneteenth" },
       { date: "Jun 21", name: "Summer Solstice" }
     ],
-    submissionDeadlines: ["Christmas", "Hanukkah", "New Year's Eve", "Winter"],
-    keywords: ["dad", "grill", "pride parade", "christmas tree", "santa", "winter wonderland", "snow"],
+    submissionDeadlines: ["Christmas Peak", "Hanukkah", "New Year's Eve 2026"],
+    keywords: ["dads", "grilling", "beach cleanup", "diversity", "pride", "sunshine", "camping", "barbecue"],
 
-    indianFocus: "Wellness & Monsoon",
+    indianFocus: "Monsoon & Wellness",
     indianEvents: [
-      { date: "Jun 21", name: "Intl. Yoga Day" },
+      { date: "Jun 07", name: "Eid-ul-Adha (Approx)" },
+      { date: "Jun 21", name: "International Yoga Day" },
       { date: "Jun 27", name: "Rath Yatra" }
     ],
-    indianDeadlines: ["New Year", "Christmas"],
-    indianKeywords: ["yoga pose", "meditation", "monsoon clouds", "rain", "umbrella", "chariot", "jagannath"]
+    indianDeadlines: ["Dussehra", "Navratri", "Diwali Early Bird"],
+    indianKeywords: ["yoga asana", "meditation", "monsoon clouds", "rain", "umbrella", "chai", "jagannath", "chariot"]
   },
   {
     month: "July",
-    focus: "Patriotism & Vacation",
+    focus: "Peak Summer",
     events: [
       { date: "Jul 01", name: "Canada Day" },
       { date: "Jul 04", name: "Independence Day (USA)" },
-      { date: "Jul 26", name: "Summer Peak" }
+      { date: "Jul 17", name: "World Emoji Day" }
     ],
-    submissionDeadlines: ["Valentine's Day", "Winter Sales"],
-    keywords: ["fireworks", "picnic", "champagne", "party", "confetti", "skiing", "snowboard"],
+    submissionDeadlines: ["Valentine's Day 2026", "Super Bowl 2026", "Winter Sports"],
+    keywords: ["fireworks", "picnic", "national pride", "digital communication", "travel", "vacation rental"],
 
-    indianFocus: "Monsoon Festivals",
+    indianFocus: "Monsoon Magic",
     indianEvents: [
-      { date: "Jul 01", name: "Doctors' Day (India)" },
-      { date: "Jul 10", name: "Guru Purnima" }
+      { date: "Jul 10", name: "Guru Purnima" },
+      { date: "Jul 17", name: "Muharram (Approx)" },
+      { date: "Jul --", name: "Hariyali Teej" }
     ],
-    indianDeadlines: ["Republic Day", "Holi"],
-    indianKeywords: ["doctor", "stethoscope", "rainy street", "chai", "pakora", "teacher", "guru"]
+    indianDeadlines: ["Wedding Season Winter", "Diwali Peak"],
+    indianKeywords: ["rainy day", "greenery", "swings", "mehndi", "teacher respect", "traditional sweets", "puddles"]
   },
   {
     month: "August",
-    focus: "Back to School",
+    focus: "Education & Youth",
     events: [
-      { date: "Aug 01", name: "Back to School" },
-      { date: "Aug 12", name: "Intl. Youth Day" },
-      { date: "Aug 25", name: "End of Summer" }
+      { date: "Aug 01", name: "Back to School Peak" },
+      { date: "Aug 12", name: "International Youth Day" },
+      { date: "Aug 19", name: "World Photography Day" }
     ],
-    submissionDeadlines: ["Spring", "Easter", "Tax Season"],
-    keywords: ["backpack", "school bus", "student", "learning", "finance", "accounting", "growth"],
+    submissionDeadlines: ["Easter 2026", "Spring Break 2026", "Corporate Tax Season"],
+    keywords: ["students", "learning", "classroom", "youth culture", "creativity", "spring prep", "office"],
 
-    indianFocus: "Freedom & Sibling Love",
+    indianFocus: "Freedom & Bonds",
     indianEvents: [
       { date: "Aug 09", name: "Raksha Bandhan" },
       { date: "Aug 15", name: "Independence Day" },
-      { date: "Aug 16", name: "Janmashtami" }
+      { date: "Aug 16", name: "Janmashtami" },
+      { date: "Aug 27", name: "Ganesh Chaturthi" }
     ],
-    indianDeadlines: ["Spring", "Wedding Season"],
-    indianKeywords: ["rakhi", "brother sister", "indian flag", "parade", "dahi handi", "krishna", "sweets"]
+    indianDeadlines: ["Republic Day 2026", "Holi 2026"],
+    indianKeywords: ["rakhi", "sister brother", "patriotic", "ganpati", "lord krishna", "indian flag", "festive decor"]
   },
   {
     month: "September",
-    focus: "Fall Business",
+    focus: "Professional Fall",
     events: [
       { date: "Sep 01", name: "Labor Day" },
-      { date: "Sep 22", name: "First Day of Autumn" },
-      { date: "Sep 27", name: "World Tourism Day" }
+      { date: "Sep 21", name: "International Day of Peace" },
+      { date: "Sep 22", name: "Fall Equinox" }
     ],
-    submissionDeadlines: ["Summer", "Wedding Season"],
-    keywords: ["falling leaves", "cozy", "sweater weather", "business meeting", "office", "strategy"],
+    submissionDeadlines: ["Mother's Day 2026", "Summer 2026 Vacation"],
+    keywords: ["autumn leaves", "cozy", "business strategy", "meeting", "peace", "harvest", "sweater weather"],
 
-    indianFocus: "Devotion & Harvest",
+    indianFocus: "Devotion & Gratitude",
     indianEvents: [
       { date: "Sep 05", name: "Teachers' Day" },
-      { date: "Sep 08", name: "Onam" },
-      { date: "Aug/Sep", name: "Ganesh Chaturthi" }
+      { date: "Sep 05", name: "Onam" },
+      { date: "Sep 21", name: "Navratri Begins" }
     ],
-    indianDeadlines: ["Summer Travel", "Back to School"],
-    indianKeywords: ["ganpati", "idol immersion", "sadhya", "flower rangoli", "kerala boat race", "saree", "classroom"]
+    indianDeadlines: ["Summer Travel 2026", "IPL / Cricket Season"],
+    indianKeywords: ["sadhya", "pookalam", "dandiya", "garba", "education", "respect", "ethnic fashion"]
   },
   {
     month: "October",
-    focus: "Spooky & Harvest",
+    focus: "Celebration & Color",
     events: [
-      { date: "Oct 13", name: "Thanksgiving (CA)" },
-      { date: "Oct 24", name: "UN Day" },
+      { date: "Oct 13", name: "Indigenous Peoples' Day" },
+      { date: "Oct 24", name: "United Nations Day" },
       { date: "Oct 31", name: "Halloween" }
     ],
-    submissionDeadlines: ["Back to School"],
-    keywords: ["ghost", "trick or treat", "pink ribbon", "harvest", "corn", "thanksgiving dinner"],
+    submissionDeadlines: ["Graduation 2026", "Father's Day 2026"],
+    keywords: ["pumpkin", "costume", "spooky", "fall harvest", "global unity", "thanksgiving prep"],
 
-    indianFocus: "Grand Festivals",
+    indianFocus: "Festival of Lights",
     indianEvents: [
       { date: "Oct 02", name: "Gandhi Jayanti" },
       { date: "Oct 02", name: "Dussehra" },
-      { date: "Oct 20", name: "Diwali (Dates vary)" }
+      { date: "Oct 20", name: "Diwali" },
+      { date: "Oct 22", name: "Bhai Dooj" }
     ],
-    indianDeadlines: ["Independence Day", "Raksha Bandhan"],
-    indianKeywords: ["diwali lights", "diya", "rangoli", "crackers", "ravan effigy", "sweets", "family puja"]
+    indianDeadlines: ["Independence Day 2026", "Monsoon 2026"],
+    indianKeywords: ["diya", "crackers", "lights", "rangoli", "sweets", "ravan", "new clothes", "family gathering"]
   },
   {
     month: "November",
-    focus: "Gratitude & Shopping",
+    focus: "Gratitude & Retail",
     events: [
       { date: "Nov 11", name: "Veterans Day" },
       { date: "Nov 27", name: "Thanksgiving (USA)" },
       { date: "Nov 28", name: "Black Friday" }
     ],
-    submissionDeadlines: ["Halloween"],
-    keywords: ["sale", "discount", "ecommerce", "family dinner", "gratitude", "shopping cart"],
+    submissionDeadlines: ["Back to School 2026", "Independence Day July"],
+    keywords: ["ecommerce", "shopping", "discount", "family dinner", "gratitude", "turkey", "winter coats"],
 
-    indianFocus: "Post-Festive & Weddings",
+    indianFocus: "Weddings & Devotion",
     indianEvents: [
       { date: "Nov 05", name: "Guru Nanak Jayanti" },
       { date: "Nov 14", name: "Children's Day" },
-      { date: "Nov --", name: "Chhath Puja" }
+      { date: "Nov --", name: "Winter Wedding Season Starts" }
     ],
-    indianDeadlines: ["Diwali", "Dussehra"],
-    indianKeywords: ["wedding season", "bride groom", "jewelry", "mehndi", "sikh turban", "river puja", "sunset"]
+    indianDeadlines: ["Diwali 2026 Early Bird", "Spring Festivals"],
+    indianKeywords: ["wedding mandap", "bride", "groom", "mehndi", "winter wear", "school kids", "gurudwara"]
   },
   {
     month: "December",
-    focus: "Festive & Review",
+    focus: "Holiday Magic",
     events: [
       { date: "Dec 24", name: "Christmas Eve" },
       { date: "Dec 25", name: "Christmas Day" },
       { date: "Dec 31", name: "New Year's Eve" }
     ],
-    submissionDeadlines: ["Christmas"],
-    keywords: ["presents", "gift", "celebration", "fireworks", "goals", "planning", "calendar"],
+    submissionDeadlines: ["Easter 2026 Peak", "Spring Fashion 2026"],
+    keywords: ["gifts", "snow", "celebration", "fireworks", "resolutions", "party", "winter solstice"],
 
-    indianFocus: "Winter & Year End",
+    indianFocus: "Year-End Vibes",
     indianEvents: [
       { date: "Dec 04", name: "Navy Day" },
       { date: "Dec 25", name: "Christmas" },
-      { date: "Dec --", name: "Peak Wedding Season" }
+      { date: "Dec --", name: "Major Music Festivals" }
     ],
-    indianDeadlines: ["Republic Day", "Holi"],
-    indianKeywords: ["party", "cake", "church", "wedding reception", "winter wear", "bonfire", "fog"]
+    indianDeadlines: ["Republic Day 2026 Peak", "Holi 2026 Peak"],
+    indianKeywords: ["winter sun", "fog", "party wear", "cake", "church", "bonfire", "picnic", "goat island"]
   }
 ];
 
@@ -278,29 +290,29 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
 
       <div className="text-center mb-10">
         <h2 className="text-4xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-teal-400">
-          Stock Photography Event Calendar
+          Contributor Content Calendar
         </h2>
         <p className="max-w-3xl mx-auto text-slate-600 dark:text-slate-400 text-xl mb-8">
-          Plan your shoots and uploads ahead of time. Stock agencies typically recommend uploading content 2-3 months before the actual event.
+          Plan your shoots 3-4 months ahead. Stock buyers search for seasonal content long before the event occurs.
         </p>
 
         {/* Region Toggle */}
-        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl">
+        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
            <button
               onClick={() => setRegion('Global')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-base font-bold transition-all ${
+              className={`flex items-center gap-2 px-8 py-2.5 rounded-lg text-base font-bold transition-all ${
                  region === 'Global' 
-                 ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' 
+                 ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-600' 
                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
            >
-              <Globe size={18} /> Global / US
+              <Globe size={18} /> Global
            </button>
            <button
               onClick={() => setRegion('India')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-base font-bold transition-all ${
+              className={`flex items-center gap-2 px-8 py-2.5 rounded-lg text-base font-bold transition-all ${
                  region === 'India' 
-                 ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-sm' 
+                 ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-100 dark:border-slate-600' 
                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
            >
@@ -319,18 +331,18 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
           
           // Theme color based on region
           const focusColor = isIndia 
-             ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/20' 
-             : 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20';
+             ? 'text-orange-600 bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800/50' 
+             : 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800/50';
 
           return (
             <div 
               key={index} 
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col group"
             >
               {/* Header */}
-              <div className="bg-slate-50 dark:bg-slate-950 p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200">{data.month}</h3>
-                <span className={`text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded ${focusColor}`}>
+              <div className="bg-slate-50 dark:bg-slate-950 p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center group-hover:bg-white dark:group-hover:bg-slate-900 transition-colors">
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{data.month}</h3>
+                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${focusColor}`}>
                   {focus}
                 </span>
               </div>
@@ -339,44 +351,42 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
                 
                 {/* Events Section */}
                 <div>
-                  <div className="flex items-center gap-2 mb-3 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
-                    <Calendar size={14} />
-                    {region} Events
+                  <div className="flex items-center gap-2 mb-4 text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest">
+                    <Calendar size={14} className="text-indigo-500" />
+                    Key Dates
                   </div>
-                  <ul className="text-base text-slate-700 dark:text-slate-300 space-y-2.5">
+                  <ul className="text-base text-slate-700 dark:text-slate-300 space-y-3">
                     {events.map((event, i) => (
-                      <li key={i} className="flex items-center gap-3">
-                        <span className={`shrink-0 font-mono text-xs font-bold px-2 py-0.5 rounded border ${
+                      <li key={i} className="flex items-center gap-3 group/item">
+                        <span className={`shrink-0 font-mono text-[10px] font-black px-2 py-1 rounded border shadow-sm ${
                             isIndia 
-                            ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 border-orange-100 dark:border-orange-800'
-                            : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800'
+                            ? 'text-orange-600 dark:text-orange-400 bg-white dark:bg-orange-900/30 border-orange-200 dark:border-orange-800'
+                            : 'text-blue-600 dark:text-blue-400 bg-white dark:bg-blue-900/30 border-blue-200 dark:border-blue-800'
                         }`}>
                           {event.date}
                         </span>
-                        <span className="truncate" title={event.name}>{event.name}</span>
+                        <span className="text-sm font-semibold truncate group-hover/item:text-indigo-500 transition-colors" title={event.name}>{event.name}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
                 {/* Upload Deadline Section */}
-                <div className={`p-4 rounded-xl border ${
+                <div className={`p-5 rounded-2xl border ${
                     isIndia 
-                    ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30'
-                    : 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30'
+                    ? 'bg-orange-50/50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-800/30'
+                    : 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-800/30'
                 }`}>
-                  <div className={`flex items-center gap-2 mb-3 text-xs font-bold uppercase tracking-wider ${
-                      isIndia ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
+                  <div className={`flex items-center gap-2 mb-3 text-[10px] font-black uppercase tracking-widest ${
+                      isIndia ? 'text-orange-600' : 'text-indigo-600'
                   }`}>
                     <UploadCloud size={14} />
-                    Shoot & Upload For:
+                    Submit Now For:
                   </div>
-                  <ul className="text-base text-slate-700 dark:text-slate-300 space-y-1.5">
+                  <ul className="text-sm text-slate-700 dark:text-slate-300 space-y-2">
                     {deadlines.map((deadline, i) => (
-                      <li key={i} className="flex items-start gap-2.5 font-medium">
-                        <span className={`block mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                            isIndia ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`}></span>
+                      <li key={i} className="flex items-center gap-2.5 font-bold">
+                        <div className={`w-1.5 h-1.5 rounded-full ${isIndia ? 'bg-orange-400' : 'bg-indigo-400'}`} />
                         {deadline}
                       </li>
                     ))}
@@ -384,16 +394,16 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
                 </div>
 
                 {/* Keywords Section */}
-                <div className="mt-auto pt-5 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2 mb-3 text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-wider">
+                <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 mb-3 text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest">
                     <Tag size={14} />
-                    {region} Keywords
+                    High-Volume Keywords
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {keywords.map((kw, i) => (
                       <span 
                         key={i} 
-                        className="text-xs font-medium px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-md"
+                        className="text-[10px] font-bold px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
                       >
                         {kw}
                       </span>
@@ -407,12 +417,21 @@ export const EventCalendar: React.FC<EventCalendarProps> = ({ onBack }) => {
         })}
       </div>
       
-      <div className="mt-14 text-center text-base text-slate-500 dark:text-slate-400 p-8 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 max-w-4xl mx-auto">
-         <p>
-           <strong>Pro Tip:</strong> {region === 'India' 
-             ? "For Indian festivals like Diwali and Holi, content starts selling 1-2 months in advance locally, but upload 3 months early for global buyers." 
-             : "Stock agencies typically require 2-3 months for review and indexing. To maximize sales, upload content related to holidays at least 3 months in advance."}
-         </p>
+      <div className="mt-16 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 p-10 max-w-5xl mx-auto shadow-xl relative overflow-hidden group">
+         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-500/20 transition-all" />
+         <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="w-20 h-20 rounded-3xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+               <Info size={40} className="text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+               <h4 className="text-xl font-bold text-slate-900 dark:text-white mb-2">The Golden Rule of Stock Timing</h4>
+               <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-lg">
+                 Agencies like <strong>Adobe Stock</strong> and <strong>Shutterstock</strong> take 1-2 weeks to review content, and another 2 weeks for search engines to index your keywords. 
+                 <br/><br/>
+                 To catch the "Peak Buyer Cycle", aim to have your files online exactly <strong>100 days before</strong> the event. This gives your content time to gain popularity points before buyers start downloading.
+               </p>
+            </div>
+         </div>
       </div>
     </div>
   );
